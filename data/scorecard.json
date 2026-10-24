@@ -1,0 +1,78 @@
+{
+  "shop": {
+    "name": "Valley Auto Body",
+    "shopId": "DRP-40217",
+    "address": "1820 Orchard Ave, Fresno, CA 93721",
+    "region": "Central Valley"
+  },
+  "insurer": {
+    "name": "Granite Mutual Insurance",
+    "program": "Direct Repair Program"
+  },
+  "period": "Q3 2026 (Jul 1 – Sep 30)",
+  "issuedOn": "2026-10-08",
+  "repairsReviewed": 142,
+  "regionalRank": { "rank": 27, "of": 34 },
+  "metrics": [
+    {
+      "key": "cycle_time",
+      "label": "Cycle Time",
+      "unit": "days",
+      "shopValue": 11.8,
+      "target": 7.5,
+      "higherIsBetter": false,
+      "score": 38,
+      "explanation": "Cars are staying in your shop about 4 days longer than the insurer wants, which is the biggest drag on your rating."
+    },
+    {
+      "key": "customer_satisfaction",
+      "label": "Customer Satisfaction (CSI)",
+      "unit": "/100",
+      "shopValue": 87,
+      "target": 90,
+      "higherIsBetter": true,
+      "score": 78,
+      "explanation": "Customers are mostly happy, but you're a few points short — late deliveries are a common reason scores slip."
+    },
+    {
+      "key": "avg_repair_cost",
+      "label": "Average Repair Cost",
+      "unit": "$",
+      "shopValue": 3410,
+      "target": 3550,
+      "higherIsBetter": false,
+      "score": 92,
+      "explanation": "Your average repair costs less than the insurer's target, so this metric is helping you."
+    },
+    {
+      "key": "supplement_rate",
+      "label": "Supplement Rate",
+      "unit": "%",
+      "shopValue": 33,
+      "target": 28,
+      "higherIsBetter": false,
+      "score": 64,
+      "explanation": "One in three jobs needs a revised estimate, a bit above target — more thorough teardowns up front would help."
+    },
+    {
+      "key": "alt_parts_usage",
+      "label": "Alternate Parts Usage",
+      "unit": "%",
+      "shopValue": 41,
+      "target": 38,
+      "higherIsBetter": true,
+      "score": 90,
+      "explanation": "You use aftermarket and recycled parts slightly more than required, which the insurer likes."
+    },
+    {
+      "key": "on_time_delivery",
+      "label": "On-Time Delivery",
+      "unit": "%",
+      "shopValue": 69,
+      "target": 92,
+      "higherIsBetter": true,
+      "score": 35,
+      "explanation": "Fewer than 7 in 10 cars go back on the promised date, far below the 92% target."
+    }
+  ]
+}
