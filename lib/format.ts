@@ -17,6 +17,17 @@ export function formatValue(value: number, unit: Metric["unit"]): string {
   }
 }
 
+/** Signed gap from target in the metric's unit: "+4.3 days", "−$140", "+5 pts". `short` uses "d" for days. */
+export function formatVariance(value: number, target: number, unit: Metric["unit"], short = false): string {
+  const diff = Math.round((value - target) * 10) / 10;
+  const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
+  const abs = Math.abs(diff);
+  if (unit === "$") return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
+  if (unit === "%") return `${sign}${oneDecimal.format(abs)} pts`;
+  if (unit === "days") return `${sign}${abs.toFixed(1)}${short ? " d" : " days"}`;
+  return `${sign}${oneDecimal.format(abs)}`;
+}
+
 /** "1,284" — counts shown to people get a thousands separator. */
 export const formatCount = (n: number) => n.toLocaleString("en-US");
 

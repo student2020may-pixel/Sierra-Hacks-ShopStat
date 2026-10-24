@@ -21,6 +21,7 @@ Return exactly 3 fixes, most impactful first. Each fix must:
 - explanation: one plain-language sentence a busy shop owner understands. Point to the specific evidence — name flagged job IDs, supplement counts, or weak metrics.
 - daysSaved: a realistic estimate of days this fix would take off the shop's AVERAGE cycle time per car (typically 0.3–2). Be conservative; the three fixes together should not exceed the gap between the shop's cycle time and its target.
 - basedOn: the job IDs and/or metric names the fix comes from, e.g. "VAB-1038, VAB-1022 · Supplement rate".
+- metrics: the keys of the scorecard metrics this fix would improve, from: cycle_time, customer_satisfaction, avg_repair_cost, supplement_rate, alt_parts_usage, on_time_delivery. Prefer the weakest ones.
 
 Focus on changes that shorten repair time: parts ordering, supplements and insurer approvals, scheduling, production tracking, sublet delays, communication. No jargon, no generic advice like "improve efficiency".`;
 
@@ -72,6 +73,7 @@ export async function POST(req: Request) {
         title: clip(f.title, 70),
         explanation: clip(f.explanation, 260),
         basedOn: clip(f.basedOn, 120),
+        metrics: [...new Set(f.metrics)],
         daysSaved: Math.round(Math.min(MAX_DAYS_PER_FIX, Math.max(0, f.daysSaved)) * 10) / 10,
       })),
     });

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Progress from "@/components/assessment/Progress";
 import AskShopStats from "@/components/AskShopStats";
+import KpiTable from "@/components/KpiTable";
 import Notice from "@/components/Notice";
 import StatSheet from "@/components/StatSheet";
 import Skeleton from "@/components/Skeleton";
@@ -23,6 +24,7 @@ const SHOP_NAME = scorecard.shop.name;
 
 interface Inputs {
   metrics: Metric[];
+  period: string | null;
   jobs: AnomalyResult | null;
   sampleScores: boolean;
   sampleJobs: boolean;
@@ -42,7 +44,13 @@ async function loadInputs(): Promise<Inputs> {
       // The rest of the page still works without job data.
     }
   }
-  return { metrics: score?.metrics ?? scorecard.metrics, jobs, sampleScores: !score, sampleJobs };
+  return {
+    metrics: score?.metrics ?? scorecard.metrics,
+    period: score ? (score.period ?? null) : scorecard.period,
+    jobs,
+    sampleScores: !score,
+    sampleJobs,
+  };
 }
 
 /** The worst slow jobs, trimmed to what the AI routes accept (a big CSV can flag hundreds). */
@@ -276,6 +284,15 @@ export default function ResultsPage() {
           <StatSheet metrics={inputs.metrics} />
         </div>
       </section>
+
+      <div className="animate-enter [animation-delay:100ms]">
+        <KpiTable
+          metrics={inputs.metrics}
+          fixes={fixes ? fixes.fixes : null}
+          period={inputs.period}
+          jobCount={inputs.jobs ? inputs.jobs.jobs.length : null}
+        />
+      </div>
 
       <section>
         <h2 className="text-xl font-bold text-primary">Top 3 fixes to cut repair time</h2>

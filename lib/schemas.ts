@@ -57,6 +57,8 @@ export const ExtractedMetricSchema = z.object({
 
 /** What the model must return for /api/score. */
 export const ScoreOutputSchema = z.object({
+  /** The reporting period as printed (e.g. "Q3 2026"), or null if the scorecard doesn't show one. */
+  period: z.string().nullable(),
   metrics: z.array(ExtractedMetricSchema),
   other_metrics: z.array(OtherMetricSchema),
 });
@@ -68,6 +70,8 @@ export const FixSchema = z.object({
   daysSaved: z.number(),
   /** The flagged jobs or weak metrics this fix is based on, e.g. "VAB-1038, VAB-1022 · Supplement rate". */
   basedOn: z.string(),
+  /** Which of the six metrics this fix should improve, so it can be shown next to them. */
+  metrics: z.array(z.enum(METRIC_KEYS)),
 });
 
 /** What the model must return for /api/fixes. */
