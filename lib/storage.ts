@@ -20,3 +20,19 @@ export function load<T>(key: string): T | null {
     return null;
   }
 }
+
+/** Like load(), but discards values that don't pass the shape check (stale versions, hand-edited storage). */
+export function loadValid<T>(key: string, isValid: (value: unknown) => value is T): T | null {
+  const value = load<unknown>(key);
+  return isValid(value) ? value : null;
+}
+
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+
+export function isScoreResult(v: unknown): v is { metrics: unknown[] } {
+  return isObject(v) && Array.isArray(v.metrics) && v.metrics.length > 0 && v.metrics.every((m) => isObject(m) && typeof m.score === "number" && typeof m.key === "string");
+}
+
+export function isJobsResult(v: unknown): v is { jobs: unknown[]; flagged: unknown[]; totalExtraDays: number } {
+  return isObject(v) && Array.isArray(v.jobs) && Array.isArray(v.flagged) && typeof v.totalExtraDays === "number" && isObject(v.fit);
+}

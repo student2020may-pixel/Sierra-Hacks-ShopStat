@@ -37,38 +37,54 @@ function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload
   );
 }
 
+/** Job IDs differ at the end (RO-2026-0003481-SUPPLEMENT-2), so shorten them in the middle. */
+function shortId(id: string, max = 14): string {
+  return id.length <= max ? id : `${id.slice(0, 6)}…${id.slice(-(max - 7))}`;
+}
+
+type LabelSpot = { side: "left" | "right"; below: boolean };
+
 /**
- * Label side per outlier: right by default, left when the label would collide with a
- * neighbor's. Walks from the largest job down so the left-most of a crowded pair goes left.
+ * Label placement per outlier, aligned with the outliers array. Each label takes the first spot
+ * that doesn't collide with a label already placed: right, left, then the same sides one line
+ * lower. Labels near the chart's right edge never go right. Walks from the largest job down so
+ * the left-most of a crowded pair goes left.
  */
-function labelSides(outliers: ScoredJob[]): Map<string, "left" | "right"> {
-  const sides = new Map<string, "left" | "right">();
-  const byHoursDesc = [...outliers].sort((a, b) => b.laborHours - a.laborHours);
-  byHoursDesc.forEach((job, i) => {
-    const crowded = byHoursDesc
-      .slice(0, i)
-      .some(
-        (o) =>
-          sides.get(o.jobId) === "right" &&
-          Math.abs(o.laborHours - job.laborHours) < 6 &&
-          Math.abs(o.daysInShop - job.daysInShop) < 3,
-      );
-    sides.set(job.jobId, crowded ? "left" : "right");
+function labelSpots(outliers: ScoredJob[], maxHours: number, maxDays: number): LabelSpot[] {
+  const spots: LabelSpot[] = new Array(outliers.length);
+  const order = outliers.map((_, i) => i).sort((a, b) => outliers[b].laborHours - outliers[a].laborHours);
+  const near = (a: ScoredJob, b: ScoredJob) =>
+    Math.abs(a.laborHours - b.laborHours) < maxHours * 0.3 && Math.abs(a.daysInShop - b.daysInShop) < maxDays * 0.08;
+  order.forEach((idx, n) => {
+    const job = outliers[idx];
+    const nearEdge = job.laborHours > maxHours * 0.7;
+    const candidates: LabelSpot[] = [
+      { side: "right", below: false },
+      { side: "left", below: false },
+      { side: "left", below: true },
+      { side: "right", below: true },
+    ].filter((c) => !(nearEdge && c.side === "right")) as LabelSpot[];
+    const placed = order.slice(0, n).filter((o) => near(outliers[o], job));
+    spots[idx] =
+      candidates.find((c) => !placed.some((o) => spots[o].side === c.side && spots[o].below === c.below)) ?? candidates[0];
   });
-  return sides;
+  return spots;
 }
 
 export default function JobsScatter({ result }: { result: AnomalyResult }) {
   const normal = result.jobs.filter((j) => !j.isOutlier);
   const outliers = result.jobs.filter((j) => j.isOutlier);
-  const sides = labelSides(outliers);
   const maxHours = Math.ceil(Math.max(...result.jobs.map((j) => j.laborHours)) / 5) * 5;
+  const maxDays = Math.max(...result.jobs.map((j) => j.daysInShop), 1);
+  const spots = labelSpots(outliers, maxHours, maxDays);
+  // Past a few dozen outliers, labels turn into noise; the table below lists them all.
+  const showLabels = outliers.length <= 12;
   const { baseDays, daysPerLaborHour } = result.fit;
 
   return (
-    <div className="h-80 w-full">
+    <div className="h-72 w-full sm:h-80">
       <ResponsiveContainer>
-        <ScatterChart margin={{ top: 10, right: 60, bottom: 30, left: 0 }}>
+        <ScatterChart margin={{ top: 10, right: 16, bottom: 30, left: -8 }}>
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
           <XAxis
             type="number"
@@ -106,23 +122,24 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
           />
           <Scatter name="Normal jobs" data={normal} fill={NORMAL} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
           <Scatter name="Outliers" data={outliers} fill={OUTLIER} stroke="#fff" strokeWidth={2} isAnimationActive={false}>
-            <LabelList
+            {showLabels && <LabelList
               dataKey="jobId"
-              content={({ x, y, value }) => {
-                const left = sides.get(String(value)) === "left";
+              content={({ x, y, value, index }) => {
+                const spot = spots[index ?? 0] ?? { side: "right", below: false };
+                const left = spot.side === "left";
                 return (
                   <text
                     x={Number(x) + (left ? -6 : 18)}
-                    y={Number(y) + 9}
+                    y={Number(y) + 9 + (spot.below ? 14 : 0)}
                     textAnchor={left ? "end" : "start"}
                     fill="#334155"
                     fontSize={11}
                   >
-                    {value}
+                    {shortId(String(value))}
                   </text>
                 );
               }}
-            />
+            />}
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>

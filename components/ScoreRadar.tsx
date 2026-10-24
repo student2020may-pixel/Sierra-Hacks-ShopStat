@@ -30,10 +30,11 @@ const FILL = "var(--color-accent)";
 export default function ScoreRadar({ metrics }: { metrics: Metric[] }) {
   const data = metrics.map((m) => ({ metric: SHORT_LABELS[m.key], score: m.score, target: TARGET_SCORE }));
 
+  // overflow-visible: axis labels like "Satisfaction" may extend past the plot box into the card padding on phones.
   return (
-    <div className="h-96 w-full">
+    <div className="h-80 w-full sm:h-96 [&_svg]:overflow-visible">
       <ResponsiveContainer>
-        <RadarChart data={data} outerRadius="78%" margin={{ top: 10, right: 40, bottom: 0, left: 40 }}>
+        <RadarChart data={data} outerRadius="75%" margin={{ top: 10, right: 44, bottom: 0, left: 44 }}>
           <PolarGrid stroke="#e2e8f0" />
           <PolarAngleAxis dataKey="metric" tick={{ fill: "#334155", fontSize: 12 }} />
           {/* Scale is fixed at 0–100; tick labels are hidden because they collide with the top axis label. */}

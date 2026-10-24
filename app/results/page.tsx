@@ -4,21 +4,19 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Notice from "@/components/Notice";
+import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import sampleFixes from "@/data/sample-fixes.json";
 import scorecardData from "@/data/scorecard.json";
 import { detectOutliers, type AnomalyResult } from "@/lib/anomaly";
 import { parseJobsCsv } from "@/lib/csv";
-import { JOBS_KEY, load, SCORE_KEY } from "@/lib/storage";
+import { formatCount } from "@/lib/format";
+import { isJobsResult, isScoreResult, JOBS_KEY, loadValid, SCORE_KEY } from "@/lib/storage";
 import type { Fix, FixesRequest, FixesResponse, Metric, Scorecard, ScoreResponse } from "@/lib/types";
 
 const ScoreRadar = dynamic(() => import("@/components/ScoreRadar"), {
   ssr: false,
-  loading: () => (
-    <div className="flex h-96 items-center justify-center">
-      <Spinner label="Drawing chart…" />
-    </div>
-  ),
+  loading: () => <Skeleton className="h-80 sm:h-96" />,
 });
 
 const scorecard = scorecardData as Scorecard;
@@ -32,8 +30,9 @@ interface Inputs {
 }
 
 async function loadInputs(): Promise<Inputs> {
-  const score = load<ScoreResponse>(SCORE_KEY);
-  let jobs = load<AnomalyResult>(JOBS_KEY);
+  // Saved results from an older version, or edited by hand, count as "not uploaded" rather than crashing the page.
+  const score = loadValid(SCORE_KEY, isScoreResult) as ScoreResponse | null;
+  let jobs = loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null;
   const sampleJobs = !jobs;
   if (!jobs) {
     try {
@@ -64,11 +63,17 @@ async function fetchFixes(inputs: Inputs): Promise<FixesResponse> {
   try {
     const res = await fetch("/api/fixes", {
       method: "POST",
+      signal: AbortSignal.timeout(55_000), // a little past the server's 40s AI timeout
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const data = await res.json();
-    if (res.ok && Array.isArray(data?.fixes) && data.fixes.length) return data as FixesResponse;
+    const valid =
+      res.ok &&
+      Array.isArray(data?.fixes) &&
+      data.fixes.length > 0 &&
+      data.fixes.every((f: Partial<Fix>) => typeof f?.title === "string" && typeof f.daysSaved === "number");
+    if (valid) return data as FixesResponse;
   } catch {
     // Fall through to the sample fixes below.
   }
@@ -84,13 +89,13 @@ function SampleNote({ sampleScores, sampleJobs }: Pick<Inputs, "sampleScores" | 
   const links = (
     <>
       {sampleScores && (
-        <Link href="/upload" className="font-semibold underline">
+        <Link href="/upload" className="pressable inline-block font-semibold underline">
           Upload your scorecard
         </Link>
       )}
       {sampleScores && sampleJobs && " · "}
       {sampleJobs && (
-        <Link href="/jobs" className="font-semibold underline">
+        <Link href="/jobs" className="pressable inline-block font-semibold underline">
           Check your jobs
         </Link>
       )}
@@ -107,15 +112,20 @@ function SampleNote({ sampleScores, sampleJobs }: Pick<Inputs, "sampleScores" | 
 
 function Banner({ jobs }: { jobs: AnomalyResult | null }) {
   const days = jobs?.totalExtraDays ?? 0;
+  const n = formatCount(days);
   return (
-    <section className="rounded-2xl bg-primary px-6 py-8 text-white sm:px-10">
+    <section className="animate-enter rounded-2xl bg-primary px-5 py-7 text-white sm:px-10 sm:py-8">
       {days > 0 ? (
         <>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {SHOP_NAME} is losing <span className="text-accent">{days}</span> car-days a quarter
+            {SHOP_NAME} is losing{" "}
+            <span className="whitespace-nowrap">
+              <span className="text-accent tabular-nums">{n}</span> car-day{days === 1 ? "" : "s"}
+            </span>{" "}
+            a quarter
           </h1>
           <p className="mt-2 text-lg text-white/80">
-            That&apos;s {days} days families spent without their car.
+            That&apos;s {n} day{days === 1 ? "" : "s"} families spent without their car.
           </p>
         </>
       ) : (
@@ -130,19 +140,24 @@ function Banner({ jobs }: { jobs: AnomalyResult | null }) {
 
 function FixCard({ fix, rank }: { fix: Fix; rank: number }) {
   return (
-    <li className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <li
+      className="animate-enter flex gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:gap-4 sm:p-5"
+      style={{ animationDelay: `${(rank - 1) * 60}ms` }}
+    >
       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
         {rank}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 className="text-lg font-semibold text-ink">{fix.title}</h3>
-          <span className="text-sm font-semibold whitespace-nowrap text-success">
-            saves ~{fix.daysSaved} day{fix.daysSaved === 1 ? "" : "s"} per car
-          </span>
+          <h3 className="text-lg font-semibold [overflow-wrap:anywhere] text-ink">{fix.title}</h3>
+          {fix.daysSaved > 0 && (
+            <span className="text-sm font-semibold whitespace-nowrap text-success">
+              saves ~{fix.daysSaved} day{fix.daysSaved === 1 ? "" : "s"} per car
+            </span>
+          )}
         </div>
         <p className="mt-1 text-slate-600">{fix.explanation}</p>
-        <p className="mt-2 text-xs text-slate-500">Based on: {fix.basedOn}</p>
+        {fix.basedOn && <p className="mt-2 text-xs [overflow-wrap:anywhere] text-slate-500">Based on: {fix.basedOn}</p>}
       </div>
     </li>
   );
@@ -150,6 +165,7 @@ function FixCard({ fix, rank }: { fix: Fix; rank: number }) {
 
 function BeforeAfter({ cycle, fixes }: { cycle: Metric; fixes: Fix[] }) {
   const current = cycle.shopValue;
+  if (!(current > 0)) return null;
   const saved = fixes.reduce((sum, f) => sum + f.daysSaved, 0);
   // Fixes overlap in practice, so never project more than halving cycle time.
   const projected = Math.round(Math.max(current * 0.5, current - saved) * 10) / 10;
@@ -160,31 +176,32 @@ function BeforeAfter({ cycle, fixes }: { cycle: Metric; fixes: Fix[] }) {
   ];
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <section className="animate-enter rounded-xl border border-slate-200 bg-white p-5 shadow-sm [animation-delay:180ms] sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 className="text-xl font-bold text-primary">Before vs. after: cycle time</h2>
         <span className="rounded-full bg-warning/20 px-3 py-1 text-xs font-semibold text-ink">Estimate</span>
       </div>
-      <div className="relative mt-6 space-y-4">
+      <div className="mt-6 space-y-4">
         {rows.map((r) => (
           <div key={r.label}>
-            <div className="flex justify-between text-sm">
+            <div className="flex justify-between gap-3 text-sm">
               <span className="text-slate-600">{r.label}</span>
-              <span className="font-semibold text-ink tabular-nums">{r.value.toFixed(1)} days</span>
+              <span className="shrink-0 font-semibold text-ink tabular-nums">{r.value.toFixed(1)} days</span>
             </div>
-            <div className="mt-1 h-4 rounded-full bg-slate-100">
+            {/* The target marker lives inside each track so it never crosses the labels. */}
+            <div className="relative mt-1 h-4 rounded-full bg-slate-100">
               <div className={`h-full rounded-full ${r.color}`} style={{ width: `${(r.value / scaleMax) * 100}%` }} />
+              <div
+                className="absolute -top-1 -bottom-1 border-l-2 border-dashed border-ink/60"
+                style={{ left: `${(cycle.target / scaleMax) * 100}%` }}
+              />
             </div>
           </div>
         ))}
-        <div
-          className="pointer-events-none absolute top-0 bottom-0 border-l-2 border-dashed border-slate-500"
-          style={{ left: `${(cycle.target / scaleMax) * 100}%` }}
-        >
-          <span className="absolute -top-5 -translate-x-1/2 text-xs whitespace-nowrap text-slate-600">
-            Target {cycle.target}
-          </span>
-        </div>
+        <p className="flex items-center gap-2 text-xs text-slate-600">
+          <span className="h-3 border-l-2 border-dashed border-ink/60" aria-hidden />
+          Insurer target: {cycle.target} days
+        </p>
       </div>
       <p className="mt-4 text-sm text-slate-600">
         If all three fixes work, the average car could leave about{" "}
@@ -215,8 +232,9 @@ export default function ResultsPage() {
 
   if (!inputs) {
     return (
-      <main className="mx-auto flex max-w-5xl justify-center px-4 py-24">
-        <Spinner label="Loading your results…" />
+      <main className="px-safe pb-safe mx-auto max-w-5xl space-y-8 pt-10" aria-busy>
+        <Skeleton className="h-36 rounded-2xl" />
+        <Skeleton className="h-[30rem]" />
       </main>
     );
   }
@@ -224,11 +242,13 @@ export default function ResultsPage() {
   const cycle = inputs.metrics.find((m) => m.key === "cycle_time");
 
   return (
-    <main className="mx-auto max-w-5xl space-y-8 px-4 py-10">
-      <SampleNote sampleScores={inputs.sampleScores} sampleJobs={inputs.sampleJobs} />
+    <main className="px-safe pb-safe mx-auto max-w-5xl space-y-8 pt-10">
+      <div className="animate-enter empty:hidden">
+        <SampleNote sampleScores={inputs.sampleScores} sampleJobs={inputs.sampleJobs} />
+      </div>
       <Banner jobs={inputs.jobs} />
 
-      <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+      <section className="animate-enter rounded-xl border border-slate-200 bg-white p-4 shadow-sm [animation-delay:60ms] sm:p-6">
         <h2 className="text-xl font-bold text-primary">Scorecard at a glance</h2>
         <p className="mt-1 text-sm text-slate-600">Each score is out of 100. Anything inside the dashed line is below target.</p>
         <ScoreRadar metrics={inputs.metrics} />
@@ -237,19 +257,22 @@ export default function ResultsPage() {
       <section>
         <h2 className="text-xl font-bold text-primary">Top 3 fixes to cut repair time</h2>
         {!fixes ? (
-          <div className="mt-4 rounded-xl border border-slate-200 bg-white p-6">
-            <Spinner label="Asking AI for your top fixes… this takes about 10–20 seconds." />
+          <div className="mt-4 space-y-3">
+            <Spinner label="Asking AI for your top fixes… about 10–20 seconds." />
+            {[0, 1, 2].map((i) => (
+              <Skeleton key={i} className="h-32" />
+            ))}
           </div>
         ) : (
           <>
             {fixes.notice && (
-              <div className="mt-4">
+              <div className="mt-4 animate-enter">
                 <Notice kind="info">{fixes.notice}</Notice>
               </div>
             )}
             <ol className="mt-4 space-y-3">
               {fixes.fixes.map((f, i) => (
-                <FixCard key={f.title} fix={f} rank={i + 1} />
+                <FixCard key={`${f.title}-${i}`} fix={f} rank={i + 1} />
               ))}
             </ol>
           </>

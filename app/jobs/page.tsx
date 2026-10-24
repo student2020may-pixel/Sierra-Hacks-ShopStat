@@ -4,15 +4,17 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState } from "react";
 import Notice from "@/components/Notice";
+import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import { detectOutliers, type AnomalyResult, type Job } from "@/lib/anomaly";
 import { parseJobsCsv } from "@/lib/csv";
+import { formatCount } from "@/lib/format";
 import { JOBS_KEY, save } from "@/lib/storage";
 
 // Recharts measures the DOM, so render it on the client only.
 const JobsScatter = dynamic(() => import("@/components/JobsScatter"), {
   ssr: false,
-  loading: () => <div className="flex h-80 items-center justify-center"><Spinner label="Drawing chart…" /></div>,
+  loading: () => <Skeleton className="h-72 sm:h-80" />,
 });
 
 /** "this quarter" when jobs came in over about three months, otherwise a neutral phrase. */
@@ -27,10 +29,12 @@ function periodPhrase(jobs: Job[]): string {
 function summary(result: AnomalyResult): string {
   const n = result.flagged.length;
   if (n === 0) return "No jobs stood out. Every job finished close to what its labor hours predict.";
-  const jobs = n === 1 ? "1 job" : `${n} jobs`;
-  const days = result.totalExtraDays === 1 ? "1 extra day" : `${result.totalExtraDays} extra days`;
+  const jobs = n === 1 ? "1 job" : `${formatCount(n)} jobs`;
+  const days = result.totalExtraDays === 1 ? "1 extra day" : `${formatCount(result.totalExtraDays)} extra days`;
   return `${jobs} added ${days} in the shop ${periodPhrase(result.jobs)}.`;
 }
+
+const MAX_CSV_BYTES = 5 * 1024 * 1024;
 
 export default function JobsPage() {
   const [loading, setLoading] = useState(false);
@@ -64,6 +68,10 @@ export default function JobsPage() {
       setError("Please upload a .csv file (export your jobs from your shop system as CSV).");
       return;
     }
+    if (file.size > MAX_CSV_BYTES) {
+      setError("That file is over 5 MB. Export just one quarter of jobs and try again.");
+      return;
+    }
     try {
       analyze(await file.text(), file.name);
     } catch {
@@ -87,7 +95,7 @@ export default function JobsPage() {
   }
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-10">
+    <main className="px-safe pb-safe mx-auto max-w-5xl pt-10">
       <h1 className="text-3xl font-bold tracking-tight text-primary">Find the jobs that dragged on</h1>
       <p className="mt-2 text-slate-600">
         Upload a CSV of recent repair jobs. We compare each job&apos;s days in the shop to what its labor hours
@@ -95,7 +103,7 @@ export default function JobsPage() {
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-lg bg-primary px-5 py-2.5 font-semibold text-white transition-colors hover:bg-primary-hover">
+        <label className="pressable cursor-pointer rounded-lg bg-primary px-5 py-3 font-semibold text-white hover:bg-primary-hover">
           Upload jobs.csv
           <input
             type="file"
@@ -110,7 +118,7 @@ export default function JobsPage() {
         <button
           onClick={useSample}
           disabled={loading}
-          className="rounded-lg border border-slate-300 bg-white px-5 py-2.5 font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+          className="pressable rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
         >
           Use sample jobs
         </button>
@@ -121,10 +129,10 @@ export default function JobsPage() {
       </p>
 
       {error && (
-        <div className="mt-6">
+        <div className="mt-6 animate-enter">
           <Notice kind="error">
             {error}{" "}
-            <button onClick={useSample} className="font-semibold underline">
+            <button onClick={useSample} className="pressable font-semibold underline">
               Use the sample jobs instead
             </button>
           </Notice>
@@ -132,10 +140,10 @@ export default function JobsPage() {
       )}
 
       {result && (
-        <section className="mt-10 space-y-8">
-          <div>
-            <p className="text-sm text-slate-500">
-              Analyzed {result.jobs.length} jobs from {source}
+        <section key={source + String(result.jobs.length)} className="mt-10 space-y-8">
+          <div className="animate-enter">
+            <p className="text-sm [overflow-wrap:anywhere] text-slate-500">
+              Analyzed {formatCount(result.jobs.length)} jobs from {source}
               {skipped > 0 && ` · skipped ${skipped} row${skipped === 1 ? "" : "s"} with missing numbers`}
             </p>
             <p className="mt-1 text-2xl font-bold text-ink">{summary(result)}</p>
@@ -145,43 +153,59 @@ export default function JobsPage() {
             </p>
           </div>
 
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="animate-enter rounded-xl border border-slate-200 bg-white p-3 shadow-sm [animation-delay:60ms] sm:p-4">
             <h2 className="px-2 font-semibold text-primary">Labor hours vs. days in shop</h2>
             <JobsScatter result={result} />
           </div>
 
           {result.flagged.length > 0 && (
-            <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-              <table className="w-full text-sm">
-                <caption className="px-4 pt-4 text-left font-semibold text-primary">Flagged jobs</caption>
-                <thead>
-                  <tr className="border-b border-slate-200 text-left text-xs text-slate-500 uppercase">
-                    <th className="px-4 py-3 font-semibold">Job ID</th>
-                    <th className="px-4 py-3 text-right font-semibold">Labor hours</th>
-                    <th className="px-4 py-3 text-right font-semibold">Days in shop</th>
-                    <th className="px-4 py-3 text-right font-semibold">Expected days</th>
-                    <th className="px-4 py-3 text-right font-semibold">Extra days</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {result.flagged.map((j) => (
-                    <tr key={j.jobId} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3 font-medium text-ink">{j.jobId}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{j.laborHours}</td>
-                      <td className="px-4 py-3 text-right tabular-nums">{j.daysInShop}</td>
-                      <td className="px-4 py-3 text-right tabular-nums text-slate-600">{j.expectedDays.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-danger">
-                        +{j.extraDays.toFixed(1)}
-                      </td>
+            <div className="animate-enter rounded-xl border border-slate-200 bg-white shadow-sm [animation-delay:120ms]">
+              <h2 className="px-4 pt-4 font-semibold text-primary">Flagged jobs</h2>
+              <ul className="divide-y divide-slate-100 sm:hidden">
+                {result.flagged.map((j, i) => (
+                  <li key={`${j.jobId}-${i}`} className="flex items-start justify-between gap-3 px-4 py-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-medium [overflow-wrap:anywhere] text-ink">{j.jobId}</p>
+                      <p className="text-slate-600 tabular-nums">
+                        {j.laborHours} hrs · {j.daysInShop} days (expected {j.expectedDays.toFixed(1)})
+                      </p>
+                    </div>
+                    <p className="shrink-0 text-right font-semibold text-danger tabular-nums">
+                      +{j.extraDays.toFixed(1)}
+                      <span className="block text-xs font-normal text-slate-500">extra days</span>
+                    </p>
+                  </li>
+                ))}
+              </ul>
+              <div className="hidden overflow-x-auto sm:block">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-200 text-left text-xs text-slate-500 uppercase">
+                      <th className="px-4 py-3 font-semibold">Job ID</th>
+                      <th className="px-4 py-3 text-right font-semibold">Labor hours</th>
+                      <th className="px-4 py-3 text-right font-semibold">Days in shop</th>
+                      <th className="px-4 py-3 text-right font-semibold">Expected days</th>
+                      <th className="px-4 py-3 text-right font-semibold">Extra days</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {result.flagged.map((j, i) => (
+                      <tr key={`${j.jobId}-${i}`} className="border-b border-slate-100 last:border-0">
+                        <td className="max-w-64 px-4 py-3 font-medium [overflow-wrap:anywhere] text-ink">{j.jobId}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{j.laborHours}</td>
+                        <td className="px-4 py-3 text-right tabular-nums">{j.daysInShop}</td>
+                        <td className="px-4 py-3 text-right text-slate-600 tabular-nums">{j.expectedDays.toFixed(1)}</td>
+                        <td className="px-4 py-3 text-right font-semibold text-danger tabular-nums">+{j.extraDays.toFixed(1)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           <div className="flex justify-end">
-            <Link href="/results" className="text-sm font-semibold text-primary hover:text-primary-hover">
+            <Link href="/results" className="pressable py-2 text-sm font-semibold text-primary hover:text-primary-hover">
               Next: see your results →
             </Link>
           </div>

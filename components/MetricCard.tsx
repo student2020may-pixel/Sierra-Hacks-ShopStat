@@ -7,15 +7,16 @@ export default function MetricCard({ metric }: { metric: Metric }) {
   const style = STATUS_STYLES[status];
 
   return (
-    <div className="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h3 className="font-semibold text-ink">{metric.label}</h3>
-          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold ${style.chip}`}>
+        {/* min-w-0 lets a long AI-written label wrap instead of pushing the score off the card */}
+        <div className="min-w-0">
+          <h3 className="font-semibold [overflow-wrap:anywhere] text-ink">{metric.label}</h3>
+          <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${style.chip}`}>
             {style.label}
           </span>
         </div>
-        <span className="text-2xl font-bold text-ink tabular-nums">{metric.score}</span>
+        <span className="shrink-0 text-2xl font-bold text-ink tabular-nums">{metric.score}</span>
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
         <div className={`h-full ${style.bar}`} style={{ width: `${metric.score}%` }} />

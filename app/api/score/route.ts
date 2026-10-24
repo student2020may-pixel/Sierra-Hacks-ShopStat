@@ -10,8 +10,21 @@ import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_BYTES = 10 * 1024 * 1024;
-const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+// Vercel rejects request bodies over ~4.5 MB before this code runs; the upload page shrinks photos first.
+const MAX_BYTES = 4.5 * 1024 * 1024;
+/**
+ * Identifies the file from its first bytes. Browsers sometimes send no MIME type (some Android
+ * pickers) or a wrong one (a renamed file), and the model needs the real type.
+ */
+function sniffType(bytes: Uint8Array): string | null {
+  const ascii = (start: number, len: number) => String.fromCharCode(...bytes.subarray(start, start + len));
+  if (bytes[0] === 0x89 && ascii(1, 3) === "PNG") return "image/png";
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (ascii(0, 4) === "GIF8") return "image/gif";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
+  if (ascii(0, 5) === "%PDF-") return "application/pdf";
+  return null;
+}
 
 const SYSTEM_PROMPT = `You read insurer scorecards for auto body shops and explain them to shop owners in plain language.
 
@@ -64,16 +77,17 @@ export async function POST(req: Request) {
     return badRequest("We couldn't read that upload. Please try choosing the file again.");
   }
   if (!file || file.size === 0) return badRequest("Please choose a scorecard image or PDF to upload.");
-  if (file.size > MAX_BYTES) return badRequest("That file is over 10 MB. Try a smaller image or PDF.");
+  if (file.size > MAX_BYTES) return badRequest("That file is over 4.5 MB. Try a screenshot or a smaller PDF.");
 
-  const isPdf = file.type === "application/pdf";
-  const isImage = IMAGE_TYPES.includes(file.type);
-  if (!isPdf && !isImage) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffType(bytes);
+  if (!type) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
+  const isPdf = type === "application/pdf";
 
   const client = getClient();
   if (!client) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
 
-  const dataUrl = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+  const dataUrl = `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
   const fileInput: ResponseInputContent = isPdf
     ? { type: "input_file", filename: file.name || "scorecard.pdf", file_data: dataUrl }
     : { type: "input_image", image_url: dataUrl, detail: "high" };
