@@ -16,6 +16,12 @@ export interface Shot {
  * The pinned frame is only as tall as its content, so there's no empty band above or below.
  * Phones (and reduced motion): a swipeable row with scroll-snap.
  */
+/** How far the row must slide so the last card ends with the same gap as the first. */
+function slideDistance(track: HTMLElement): number {
+  // scrollWidth leaves out the row's right padding; clientWidth leaves out the page scrollbar.
+  return Math.max(0, track.scrollWidth + parseFloat(getComputedStyle(track).paddingRight) - track.clientWidth);
+}
+
 export default function HorizontalGallery({ shots, header }: { shots: Shot[]; header?: ReactNode }) {
   const section = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLDivElement>(null);
@@ -37,7 +43,7 @@ export default function HorizontalGallery({ shots, header }: { shots: Shot[]; he
   useEffect(() => {
     if (!pinned) return setHeight(null);
     const measure = () => {
-      const distance = Math.max(0, (track.current?.scrollWidth ?? 0) - window.innerWidth);
+      const distance = track.current ? slideDistance(track.current) : 0;
       setHeight((frame.current?.offsetHeight ?? window.innerHeight) + distance);
     };
     measure();
@@ -50,7 +56,7 @@ export default function HorizontalGallery({ shots, header }: { shots: Shot[]; he
     const f = frame.current;
     const t = track.current;
     if (!s || !f || !t) return;
-    const distance = Math.max(0, t.scrollWidth - window.innerWidth);
+    const distance = slideDistance(t);
     // The frame sticks once it's vertically centered (or at the top, if it's taller than the screen).
     const stickAt = Math.max(0, (window.innerHeight - f.offsetHeight) / 2);
     f.style.top = `${stickAt}px`;
