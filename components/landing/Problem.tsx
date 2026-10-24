@@ -11,7 +11,7 @@ export default function Problem() {
               19.3 days
             </div>
             <p className="text-base sm:text-lg text-gray-700 leading-relaxed">
-              average time a repair takes
+              average days to get a car back after a claim
             </p>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 sm:p-8 text-center space-y-3 hover:shadow-md transition-shadow duration-200">

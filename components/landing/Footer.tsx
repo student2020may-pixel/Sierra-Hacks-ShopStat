@@ -6,7 +6,7 @@ export default function Footer() {
           Built at Sierra Hacks 2026
         </p>
         <p className="text-sm sm:text-base text-gray-600">
-          Team: [Add team names here]
+          Team: Ishaan Bhatnagar and Sidhak Makkar
         </p>
       </div>
     </footer>
