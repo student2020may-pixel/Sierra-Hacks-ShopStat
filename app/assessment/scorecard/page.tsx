@@ -117,16 +117,16 @@ export default function ScorecardStep() {
   return (
     <main className="px-safe mx-auto max-w-5xl pt-8">
       <Progress step={1} />
-      <h1 className="mt-6 text-3xl font-bold tracking-tight text-primary">Upload your insurer scorecard</h1>
-      <p className="mt-2 text-slate-600">
+      <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Upload your insurer scorecard</h1>
+      <p className="mt-2 text-bone/70">
         Drop in a photo, screenshot, or PDF of your scorecard. We&apos;ll score each metric and explain it in plain
         English.
       </p>
-      <p className="mt-2 text-sm text-slate-500">
+      <p className="mt-2 text-sm text-muted">
         Insurers send these as a PDF or through their online portal. A photo or screenshot works too.
       </p>
-      <p className="mt-1 text-sm text-slate-500">
-        <span className="font-semibold text-slate-600">Your file:</span> sent to OpenAI only to read the numbers, and not saved by
+      <p className="mt-1 text-sm text-muted">
+        <span className="font-semibold text-bone/70">Your file:</span> sent to OpenAI only to read the numbers, and not saved by
         ShopStats. Your results stay in this browser tab.
       </p>
 
@@ -142,7 +142,7 @@ export default function ScorecardStep() {
           pick(e.dataTransfer.files[0]);
         }}
         className={`pressable mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-12 text-center active:scale-[0.99] ${
-          dragging ? "border-primary bg-primary/5" : "border-slate-300 bg-white hover:border-slate-400"
+          dragging ? "border-gold bg-gold/10" : "border-white/20 bg-night-2 hover:border-gold/60"
         }`}
       >
         <input
@@ -156,21 +156,21 @@ export default function ScorecardStep() {
         />
         {file ? (
           <>
-            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-ink">{file.name}</p>
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{file.name}</p>
+            <p className="mt-1 text-sm text-muted">
               {file.size >= 1024 * 1024 ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`} ·{" "}
               tap to choose another
             </p>
           </>
         ) : resultName ? (
           <>
-            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-ink">{resultName}</p>
-            <p className="mt-1 text-sm text-slate-500">Scored · tap to choose a different file</p>
+            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{resultName}</p>
+            <p className="mt-1 text-sm text-muted">Scored · tap to choose a different file</p>
           </>
         ) : (
           <>
-            <p className="font-medium text-ink">Tap to choose a file, or drag it here</p>
-            <p className="mt-1 text-sm text-slate-500">PNG, JPG, WebP, GIF, or PDF · large photos are shrunk automatically</p>
+            <p className="font-medium text-bone">Tap to choose a file, or drag it here</p>
+            <p className="mt-1 text-sm text-muted">PNG, JPG, WebP, GIF, or PDF · large photos are shrunk automatically</p>
           </>
         )}
       </label>
@@ -179,7 +179,7 @@ export default function ScorecardStep() {
         <button
           onClick={submit}
           disabled={!file || loading}
-          className="pressable rounded-lg bg-primary px-5 py-3 font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10"
         >
           Score my scorecard
         </button>
@@ -187,7 +187,7 @@ export default function ScorecardStep() {
           type="button"
           onClick={useSample}
           disabled={loading}
-          className="pressable rounded-lg border border-slate-300 bg-white px-5 py-3 font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+          className="pressable rounded-full border border-white/20 bg-transparent px-5 py-3 font-semibold text-bone/85 hover:bg-white/[0.03] disabled:opacity-50"
         >
           Try with sample scorecard
         </button>
@@ -215,9 +215,9 @@ export default function ScorecardStep() {
               <Notice kind="info">{result.notice}</Notice>
             </div>
           )}
-          <h2 className="text-xl font-bold text-primary">Your scores</h2>
-          <p className="mt-1 text-sm text-slate-600">
-            Check the numbers we read. If one is wrong, tap <span className="font-semibold text-primary">Edit</span> to fix it and the
+          <h2 className="font-serif text-3xl font-normal text-bone">Your scores</h2>
+          <p className="mt-1 text-sm text-bone/70">
+            Check the numbers we read. If one is wrong, tap <span className="font-semibold text-gold">Edit</span> to fix it and the
             score updates.
           </p>
           <div className="mt-4 animate-enter">

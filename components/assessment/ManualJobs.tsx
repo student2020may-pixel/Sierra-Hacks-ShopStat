@@ -30,8 +30,8 @@ export default function ManualJobs({ onSubmit }: { onSubmit: (csv: string) => vo
   }
 
   return (
-    <div className="animate-enter mt-4 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-xs font-semibold text-slate-500">
+    <div className="animate-enter mt-4 rounded-xl border border-line bg-night-2 p-4 ">
+      <div className="grid grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)] gap-2 text-xs font-semibold text-muted">
         <span>Job ID</span>
         <span>Labor hours</span>
         <span>Days in shop</span>
@@ -49,7 +49,7 @@ export default function ManualJobs({ onSubmit }: { onSubmit: (csv: string) => vo
                 autoCapitalize={field === "jobId" ? "characters" : "off"}
                 autoComplete="off"
                 placeholder={field === "jobId" ? `RO-${101 + i}` : field === "laborHours" ? "12.5" : "4"}
-                className="w-full min-w-0 rounded-md border border-slate-300 px-2.5 py-2 text-ink placeholder:text-slate-300 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+                className="w-full min-w-0 rounded-md border border-white/20 px-2.5 py-2 text-bone placeholder:text-muted/60 focus:border-gold focus:ring-2 focus:ring-gold/20 focus:outline-none"
               />
             ))}
           </div>
@@ -57,23 +57,23 @@ export default function ManualJobs({ onSubmit }: { onSubmit: (csv: string) => vo
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {rows.length < MAX_ROWS && (
-          <button type="button" onClick={() => setRows((prev) => [...prev, emptyRow()])} className="pressable text-sm font-semibold text-primary">
+          <button type="button" onClick={() => setRows((prev) => [...prev, emptyRow()])} className="pressable text-sm font-semibold text-gold">
             + Add a row
           </button>
         )}
-        <span className="text-sm text-slate-500">
+        <span className="text-sm text-muted">
           {complete.length} of {rows.length} rows filled · up to {MAX_ROWS}
         </span>
         <button
           type="button"
           onClick={submit}
           disabled={complete.length < MIN_JOBS}
-          className="pressable ml-auto rounded-lg bg-primary px-4 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="pressable ml-auto rounded-full bg-gold px-4 py-2.5 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10"
         >
           Check these jobs
         </button>
       </div>
-      {complete.length < MIN_JOBS && <p className="mt-2 text-xs text-slate-500">Fill in at least {MIN_JOBS} jobs so we can tell normal from slow.</p>}
+      {complete.length < MIN_JOBS && <p className="mt-2 text-xs text-muted">Fill in at least {MIN_JOBS} jobs so we can tell normal from slow.</p>}
     </div>
   );
 }

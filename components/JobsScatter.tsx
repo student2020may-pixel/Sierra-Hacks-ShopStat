@@ -16,18 +16,20 @@ import {
 import type { AnomalyResult, ScoredJob } from "@/lib/anomaly";
 
 // Theme tokens from app/globals.css.
-const NORMAL = "var(--color-primary)";
+const NORMAL = "var(--color-gold)";
 const OUTLIER = "var(--color-danger)";
-const INK_MUTED = "#64748b"; // slate-500
+const INK_MUTED = "#8f8a82"; // --color-muted
+const GRID = "rgb(237 233 225 / 0.12)"; // --color-line
+const LABEL = "#ede9e1"; // --color-bone
 
 function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload: ScoredJob }[] }) {
   const job = payload?.[0]?.payload;
   if (!active || !job) return null;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md">
-      <p className="font-semibold text-ink">
+    <div className="rounded-lg border border-line bg-night-2 px-3 py-2 text-xs text-bone/85 shadow-md">
+      <p className="font-semibold text-bone">
         {job.jobId}
-        {job.isOutlier && <span className="ml-2 font-bold text-danger">Outlier</span>}
+        {job.isOutlier && <span className="ml-2 font-bold text-danger-soft">Outlier</span>}
       </p>
       <p>{job.laborHours} labor hours</p>
       <p>
@@ -101,20 +103,20 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
     <div className="h-72 w-full sm:h-80">
       <ResponsiveContainer>
         <ScatterChart margin={{ top: 10, right: 16, bottom: 30, left: -8 }}>
-          <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
+          <CartesianGrid stroke={GRID} strokeDasharray="3 3" />
           <XAxis
             type="number"
             dataKey="laborHours"
             domain={[0, maxHours]}
             tick={{ fill: INK_MUTED, fontSize: 12 }}
-            stroke="#cbd5e1"
+            stroke={GRID}
             label={{ value: "Estimated labor hours", position: "insideBottom", offset: -18, fill: INK_MUTED, fontSize: 12 }}
           />
           <YAxis
             type="number"
             dataKey="daysInShop"
             tick={{ fill: INK_MUTED, fontSize: 12 }}
-            stroke="#cbd5e1"
+            stroke={GRID}
             label={{ value: "Days in shop", angle: -90, position: "insideLeft", offset: 15, fill: INK_MUTED, fontSize: 12 }}
           />
           <ReferenceLine
@@ -134,10 +136,10 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
             align="right"
             iconType="circle"
             wrapperStyle={{ fontSize: 12, paddingBottom: 8 }}
-            formatter={(value) => <span style={{ color: "#334155" }}>{value}</span>}
+            formatter={(value) => <span style={{ color: LABEL }}>{value}</span>}
           />
-          <Scatter name="Normal jobs" data={normal} fill={NORMAL} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
-          <Scatter name="Outliers" data={outliers} fill={OUTLIER} stroke="#fff" strokeWidth={2} isAnimationActive={false}>
+          <Scatter name="Normal jobs" data={normal} fill={NORMAL} stroke="#141416" strokeWidth={2} isAnimationActive={false} />
+          <Scatter name="Outliers" data={outliers} fill={OUTLIER} stroke="#141416" strokeWidth={2} isAnimationActive={false}>
             {showLabels && <LabelList
               dataKey="jobId"
               content={({ x, y, value, index }) => {
@@ -149,7 +151,7 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
                     x={Number(x) + (left ? -6 : 18)}
                     y={Number(y) + 9 + (spot.below ? 14 : 0)}
                     textAnchor={left ? "end" : "start"}
-                    fill="#334155"
+                    fill={LABEL}
                     fontSize={11}
                   >
                     {shortId(String(value))}
@@ -160,7 +162,7 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>
-      <p className="-mt-2 text-center text-xs text-slate-500">Dashed line: expected days for a job of that size</p>
+      <p className="-mt-2 text-center text-xs text-muted">Dashed line: expected days for a job of that size</p>
     </div>
   );
 }

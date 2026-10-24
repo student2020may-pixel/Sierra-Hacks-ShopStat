@@ -25,7 +25,7 @@ function EditForm({ metric, onSave, onCancel }: { metric: Metric; onSave: (m: Me
     onSave(applyEdit(metric, { shopValue: v, target: t }));
   }
 
-  const field = "w-full min-w-0 rounded-md border border-slate-300 px-2.5 py-2 text-ink focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none";
+  const field = "w-full min-w-0 rounded-md border border-white/20 px-2.5 py-2 text-bone focus:border-gold focus:ring-2 focus:ring-gold/20 focus:outline-none";
   return (
     <form
       className="mt-3 space-y-2"
@@ -36,24 +36,24 @@ function EditForm({ metric, onSave, onCancel }: { metric: Metric; onSave: (m: Me
     >
       <div className="grid grid-cols-2 gap-2 text-sm">
         <label className="space-y-1">
-          <span className="text-slate-500">You ({UNIT_HINT[metric.unit]})</span>
+          <span className="text-muted">You ({UNIT_HINT[metric.unit]})</span>
           <input value={value} onChange={(e) => setValue(e.target.value)} inputMode="decimal" autoComplete="off" className={field} />
         </label>
         <label className="space-y-1">
-          <span className="text-slate-500">Target ({UNIT_HINT[metric.unit]})</span>
+          <span className="text-muted">Target ({UNIT_HINT[metric.unit]})</span>
           <input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="decimal" autoComplete="off" className={field} />
         </label>
       </div>
-      {error && <p className="text-xs text-danger">{error}</p>}
+      {error && <p className="text-xs text-danger-soft">{error}</p>}
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <button type="submit" className="pressable rounded-md bg-primary px-3 py-2 text-sm font-semibold text-white hover:bg-primary-hover">
+        <button type="submit" className="pressable rounded-full bg-gold px-3 py-2 text-sm font-semibold text-night hover:bg-bone">
           Save
         </button>
-        <button type="button" onClick={onCancel} className="pressable text-sm font-semibold text-slate-600">
+        <button type="button" onClick={onCancel} className="pressable text-sm font-semibold text-bone/70">
           Cancel
         </button>
         {isScored(metric) && (
-          <button type="button" onClick={() => onSave(applyEdit(metric, null))} className="pressable ml-auto text-xs text-slate-500 underline">
+          <button type="button" onClick={() => onSave(applyEdit(metric, null))} className="pressable ml-auto text-xs text-muted underline">
             Not on my scorecard
           </button>
         )}
@@ -69,7 +69,7 @@ export default function MetricCard({ metric, onChange }: { metric: Metric; onCha
   const style = STATUS_STYLES[status];
 
   const editLink = onChange && !editing && (
-    <button type="button" onClick={() => setEditing(true)} className="pressable text-xs font-semibold text-primary hover:text-primary-hover">
+    <button type="button" onClick={() => setEditing(true)} className="pressable text-xs font-semibold text-gold hover:text-bone">
       {isScored(metric) ? "Edit" : "Add values"}
     </button>
   );
@@ -84,14 +84,14 @@ export default function MetricCard({ metric, onChange }: { metric: Metric; onCha
     />
   );
   const editedChip = metric.edited && (
-    <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-primary">Edited by you</span>
+    <span className="rounded-full bg-gold/10 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-gold">Edited by you</span>
   );
 
   if (!isScored(metric)) {
     return (
-      <div className="flex h-full flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
+      <div className="flex h-full flex-col rounded-xl border border-dashed border-white/20 bg-white/[0.03] p-5">
         <div className="flex items-start justify-between gap-3">
-          <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere] text-slate-500">{metric.label}</h3>
+          <h3 className="min-w-0 font-semibold [overflow-wrap:anywhere] text-muted">{metric.label}</h3>
           {editLink}
         </div>
         <div className="mt-1 flex flex-wrap gap-1.5">
@@ -99,7 +99,7 @@ export default function MetricCard({ metric, onChange }: { metric: Metric; onCha
           {editedChip}
         </div>
         {form || (
-          <p className="mt-3 text-sm leading-relaxed text-slate-500">
+          <p className="mt-3 text-sm leading-relaxed text-muted">
             This wasn&apos;t on your scorecard (or couldn&apos;t be read clearly), so it isn&apos;t scored or counted in the chart.
           </p>
         )}
@@ -108,19 +108,19 @@ export default function MetricCard({ metric, onChange }: { metric: Metric; onCha
   }
 
   return (
-    <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="flex h-full flex-col rounded-xl border border-line bg-night-2 p-5 ">
       <div className="flex items-start justify-between gap-3">
         {/* min-w-0 lets a long label wrap instead of pushing the score off the card */}
         <div className="min-w-0">
-          <h3 className="font-semibold [overflow-wrap:anywhere] text-ink">{metric.label}</h3>
+          <h3 className="font-semibold [overflow-wrap:anywhere] text-bone">{metric.label}</h3>
           <div className="mt-1 flex flex-wrap gap-1.5">
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${style.chip}`}>{style.label}</span>
             {editedChip}
           </div>
         </div>
-        <span className="shrink-0 text-2xl font-bold text-ink tabular-nums">{metric.score}</span>
+        <span className="shrink-0 text-2xl font-bold text-bone tabular-nums">{metric.score}</span>
       </div>
-      <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100">
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/[0.06]">
         <div className={`h-full ${style.bar}`} style={{ width: `${metric.score}%` }} />
       </div>
       {form || (
@@ -128,17 +128,17 @@ export default function MetricCard({ metric, onChange }: { metric: Metric; onCha
           <div className="mt-3 flex items-end justify-between gap-3">
             <dl className="flex gap-6 text-sm">
               <div>
-                <dt className="text-slate-500">You</dt>
-                <dd className={`font-semibold ${status === "below" ? "text-danger" : "text-ink"}`}>{formatValue(metric.shopValue, metric.unit)}</dd>
+                <dt className="text-muted">You</dt>
+                <dd className={`font-semibold ${status === "below" ? "text-danger-soft" : "text-bone"}`}>{formatValue(metric.shopValue, metric.unit)}</dd>
               </div>
               <div>
-                <dt className="text-slate-500">Target</dt>
-                <dd className="font-semibold text-ink">{formatValue(metric.target, metric.unit)}</dd>
+                <dt className="text-muted">Target</dt>
+                <dd className="font-semibold text-bone">{formatValue(metric.target, metric.unit)}</dd>
               </div>
             </dl>
             {editLink}
           </div>
-          <p className="mt-3 text-sm leading-relaxed text-slate-600">{metric.explanation}</p>
+          <p className="mt-3 text-sm leading-relaxed text-bone/70">{metric.explanation}</p>
         </>
       )}
     </div>

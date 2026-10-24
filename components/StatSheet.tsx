@@ -31,7 +31,7 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
   const shape = (scores: number[]) => scores.map((s, i) => at(i, (R * Math.max(0, Math.min(100, s))) / 100).join(",")).join(" ");
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-ink text-white ring-1 ring-white/10">
+    <div className="overflow-hidden rounded-2xl bg-night-2 text-white ring-1 ring-line">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-white/10 px-4 py-3 sm:px-5">
         <p className="text-xs font-semibold tracking-[0.2em] text-accent uppercase">Shop stat sheet</p>
         {level !== null && (
@@ -43,7 +43,7 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
       {weakest && (
         <p className="px-4 pt-3 text-sm text-white/80 sm:px-5">
           <span className="font-semibold text-white">Weakest stat:</span>{" "}
-          <span className="font-mono font-bold text-danger">{STAT_LABELS[weakest.metric.key].short}</span>
+          <span className="font-mono font-bold text-danger-soft">{STAT_LABELS[weakest.metric.key].short}</span>
           {weakest.text.slice(STAT_LABELS[weakest.metric.key].short.length)}
         </p>
       )}
@@ -107,7 +107,7 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
               />
               {scored.map((m, i) => {
                 const [x, y] = at(i, (R * m.score) / 100);
-                return <circle key={m.key} cx={x} cy={y} r={4.5} fill={STATUS_FILL[metricStatus(m)]} stroke="#0f172a" strokeWidth={2} />;
+                return <circle key={m.key} cx={x} cy={y} r={4.5} fill={STATUS_FILL[metricStatus(m)]} stroke="#141416" strokeWidth={2} />;
               })}
             </g>
 
@@ -140,7 +140,7 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
 
           <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-1 px-4 pb-4 text-xs text-white/70">
             <span className="flex items-center gap-2">
-              <span aria-hidden className="w-5 border-t-2 border-dashed border-slate-200/85" /> Insurer target
+              <span aria-hidden className="w-5 border-t-2 border-dashed border-line/85" /> Insurer target
             </span>
             <span className="flex items-center gap-2">
               <span aria-hidden className="h-3 w-3 rounded-sm border-2 border-danger bg-danger/40" /> Your shop

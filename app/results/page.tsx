@@ -136,24 +136,24 @@ function Banner({ jobs }: { jobs: AnomalyResult | null }) {
   const days = jobs?.totalExtraDays ?? 0;
   const n = formatCount(days);
   return (
-    <section className="animate-enter rounded-2xl bg-primary px-5 py-7 text-white sm:px-10 sm:py-8">
+    <section className="animate-enter relative overflow-hidden rounded-2xl border border-gold/30 bg-night-2 px-5 py-7 text-bone sm:px-10 sm:py-9">
       {days > 0 ? (
         <>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">
             {SHOP_NAME} is losing{" "}
             <span className="whitespace-nowrap">
-              <span className="text-accent tabular-nums">{n}</span> car-day{days === 1 ? "" : "s"}
+              <span className="text-gold italic tabular-nums">{n}</span> car-day{days === 1 ? "" : "s"}
             </span>{" "}
             a quarter
           </h1>
-          <p className="mt-2 text-lg text-white/80">
+          <p className="mt-3 text-lg text-bone/70">
             That&apos;s {n} day{days === 1 ? "" : "s"} families spent without their car.
           </p>
         </>
       ) : (
         <>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{SHOP_NAME}&apos;s results</h1>
-          <p className="mt-2 text-lg text-white/80">No jobs ran unusually long. Here&apos;s how your scorecard looks.</p>
+          <h1 className="font-serif text-4xl leading-tight tracking-tight sm:text-5xl">{SHOP_NAME}&apos;s results</h1>
+          <p className="mt-3 text-lg text-bone/70">No jobs ran unusually long. Here&apos;s how your scorecard looks.</p>
         </>
       )}
     </section>
@@ -163,23 +163,23 @@ function Banner({ jobs }: { jobs: AnomalyResult | null }) {
 function FixCard({ fix, rank }: { fix: Fix; rank: number }) {
   return (
     <li
-      className="animate-enter flex gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:gap-4 sm:p-5"
+      className="animate-enter flex gap-3 rounded-xl border border-line bg-night-2 p-4  sm:gap-4 sm:p-5"
       style={{ animationDelay: `${(rank - 1) * 60}ms` }}
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold font-bold text-night">
         {rank}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 className="text-lg font-semibold [overflow-wrap:anywhere] text-ink">{fix.title}</h3>
+          <h3 className="text-lg font-semibold [overflow-wrap:anywhere] text-bone">{fix.title}</h3>
           {fix.daysSaved > 0 && (
-            <span className="text-sm font-semibold whitespace-nowrap text-success">
+            <span className="text-sm font-semibold whitespace-nowrap text-success-soft">
               saves ~{fix.daysSaved} day{fix.daysSaved === 1 ? "" : "s"} per car
             </span>
           )}
         </div>
-        <p className="mt-1 text-slate-600">{fix.explanation}</p>
-        {fix.basedOn && <p className="mt-2 text-xs [overflow-wrap:anywhere] text-slate-500">Based on: {fix.basedOn}</p>}
+        <p className="mt-1 text-bone/70">{fix.explanation}</p>
+        {fix.basedOn && <p className="mt-2 text-xs [overflow-wrap:anywhere] text-muted">Based on: {fix.basedOn}</p>}
       </div>
     </li>
   );
@@ -198,34 +198,34 @@ function BeforeAfter({ cycle, fixes }: { cycle: ScoredMetric; fixes: Fix[] }) {
   ];
 
   return (
-    <section className="animate-enter rounded-xl border border-slate-200 bg-white p-5 shadow-sm [animation-delay:180ms] sm:p-6">
+    <section className="animate-enter rounded-xl border border-line bg-night-2 p-5  [animation-delay:180ms] sm:p-6">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-bold text-primary">Before vs. after: cycle time</h2>
-        <span className="rounded-full bg-warning/20 px-3 py-1 text-xs font-semibold text-ink">Estimate</span>
+        <h2 className="font-serif text-3xl font-normal text-bone">Before vs. after: cycle time</h2>
+        <span className="rounded-full bg-warning/20 px-3 py-1 text-xs font-semibold text-bone">Estimate</span>
       </div>
       <div className="mt-6 space-y-4">
         {rows.map((r) => (
           <div key={r.label}>
             <div className="flex justify-between gap-3 text-sm">
-              <span className="text-slate-600">{r.label}</span>
-              <span className="shrink-0 font-semibold text-ink tabular-nums">{r.value.toFixed(1)} days</span>
+              <span className="text-bone/70">{r.label}</span>
+              <span className="shrink-0 font-semibold text-bone tabular-nums">{r.value.toFixed(1)} days</span>
             </div>
             {/* The target marker lives inside each track so it never crosses the labels. */}
-            <div className="relative mt-1 h-4 rounded-full bg-slate-100">
+            <div className="relative mt-1 h-4 rounded-full bg-white/[0.06]">
               <div className={`h-full rounded-full ${r.color}`} style={{ width: `${(r.value / scaleMax) * 100}%` }} />
               <div
-                className="absolute -top-1 -bottom-1 border-l-2 border-dashed border-ink/60"
+                className="absolute -top-1 -bottom-1 border-l-2 border-dashed border-bone/60"
                 style={{ left: `${(cycle.target / scaleMax) * 100}%` }}
               />
             </div>
           </div>
         ))}
-        <p className="flex items-center gap-2 text-xs text-slate-600">
-          <span className="h-3 border-l-2 border-dashed border-ink/60" aria-hidden />
+        <p className="flex items-center gap-2 text-xs text-bone/70">
+          <span className="h-3 border-l-2 border-dashed border-bone/60" aria-hidden />
           Insurer target: {cycle.target} days
         </p>
       </div>
-      <p className="mt-4 text-sm text-slate-600">
+      <p className="mt-4 text-sm text-bone/70">
         If all three fixes work, the average car could leave about{" "}
         <span className="font-semibold">{(current - projected).toFixed(1)} days sooner</span>. This is a rough
         estimate that adds up the fixes above. Real results depend on how well each change sticks.
@@ -280,7 +280,7 @@ export default function ResultsPage() {
         <>
           <div className="space-y-3">
             <Progress step={3} />
-            <Link href="/assessment/jobs" className="pressable inline-block text-sm font-semibold text-primary hover:text-primary-hover">
+            <Link href="/assessment/jobs" className="pressable inline-block text-sm font-semibold text-gold hover:text-bone">
               ← Back to jobs
             </Link>
           </div>
@@ -291,9 +291,9 @@ export default function ResultsPage() {
       )}
       <Banner jobs={inputs.jobs} />
 
-      <section className="animate-enter rounded-xl border border-slate-200 bg-white p-4 shadow-sm [animation-delay:60ms] sm:p-6">
-        <h2 className="text-xl font-bold text-primary">Scorecard at a glance</h2>
-        <p className="mt-1 text-sm text-slate-600">
+      <section className="animate-enter rounded-xl border border-line bg-night-2 p-4  [animation-delay:60ms] sm:p-6">
+        <h2 className="font-serif text-3xl font-normal text-bone">Scorecard at a glance</h2>
+        <p className="mt-1 text-sm text-bone/70">
           Each stat is scored out of 100. Wherever the red shape falls inside the dashed target, the shop is short.
           {missingCount > 0 &&
             ` ${missingCount} metric${missingCount === 1 ? " isn't" : "s aren't"} on your scorecard, so ${missingCount === 1 ? "it's" : "they're"} left out.`}
@@ -316,7 +316,7 @@ export default function ResultsPage() {
       </div>
 
       <section>
-        <h2 className="text-xl font-bold text-primary">Top 3 fixes to cut repair time</h2>
+        <h2 className="font-serif text-3xl font-normal text-bone">Top 3 fixes to cut repair time</h2>
         {!fixes ? (
           <div className="mt-4 space-y-3">
             <Spinner label="Asking AI for your top fixes… about 10–20 seconds." />

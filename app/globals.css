@@ -31,6 +31,10 @@
   --color-muted: #8f8a82;
   --color-gold: #c9a86a;
   --color-line: rgb(237 233 225 / 0.12);
+  /* Status red and green are too dim to read as small text on the dark surfaces; these are for text.
+     Fills, bars, and dots keep --color-danger / --color-success. */
+  --color-danger-soft: #f87171;
+  --color-success-soft: #4ade80;
 
   /* The landing headline and reveals use this softer, longer ease. */
   --ease-lux: cubic-bezier(0.2, 0.7, 0.2, 1);
@@ -120,8 +124,8 @@
   }
 
   body {
-    background: var(--color-page);
-    color: var(--color-ink);
+    background: var(--color-night);
+    color: var(--color-bone);
   }
 
   /* iOS zooms the page into any input under 16px and doesn't zoom back out. */

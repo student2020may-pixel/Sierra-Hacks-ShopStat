@@ -56,9 +56,9 @@ export default function AskShopStats({ context }: { context: Context }) {
   }
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
-      <h2 className="text-xl font-bold text-primary">Ask ShopStats</h2>
-      <p className="mt-1 text-sm text-slate-600">Answers use only your scorecard, your slow jobs, and your fix list.</p>
+    <section className="rounded-xl border border-line bg-night-2 p-4  sm:p-6">
+      <h2 className="font-serif text-3xl font-normal text-bone">Ask ShopStats</h2>
+      <p className="mt-1 text-sm text-bone/70">Answers use only your scorecard, your slow jobs, and your fix list.</p>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {SUGGESTED_QUESTIONS.map((q) => (
@@ -67,7 +67,7 @@ export default function AskShopStats({ context }: { context: Context }) {
             type="button"
             onClick={() => ask(q)}
             disabled={loading}
-            className="pressable rounded-full border border-primary/20 bg-primary/5 px-3 py-2 text-sm font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+            className="pressable rounded-full border border-gold/30 bg-gold/10 px-3 py-2 text-sm font-medium text-gold hover:bg-gold/20 disabled:opacity-50"
           >
             {q}
           </button>
@@ -93,32 +93,32 @@ export default function AskShopStats({ context }: { context: Context }) {
           placeholder="Ask about your scores or jobs…"
           enterKeyHint="send"
           autoComplete="off"
-          className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-ink placeholder:text-slate-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none"
+          className="min-w-0 flex-1 rounded-lg border border-white/20 bg-night-2 px-3 py-2.5 text-bone placeholder:text-muted focus:border-gold focus:ring-2 focus:ring-gold/20 focus:outline-none"
         />
         <button
           type="submit"
           disabled={loading || !question.trim()}
-          className="pressable rounded-lg bg-primary px-5 py-2.5 font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="pressable rounded-full bg-gold px-5 py-2.5 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10"
         >
           Ask
         </button>
       </form>
 
-      {error && <p className="mt-3 text-sm text-danger">{error}</p>}
+      {error && <p className="mt-3 text-sm text-danger-soft">{error}</p>}
 
       {exchanges.length > 0 && (
         <ul className="mt-5 space-y-3">
           {exchanges.map((e) => (
-            <li key={e.id} className="animate-enter rounded-lg bg-page p-4">
-              <p className="text-sm font-semibold [overflow-wrap:anywhere] text-ink">{e.question}</p>
+            <li key={e.id} className="animate-enter rounded-lg bg-night p-4">
+              <p className="text-sm font-semibold [overflow-wrap:anywhere] text-bone">{e.question}</p>
               {e.answer === null ? (
                 <div className="mt-2">
                   <Spinner label="Thinking it through…" />
                 </div>
               ) : (
                 <div className="animate-enter">
-                  <p className="mt-1.5 leading-relaxed [overflow-wrap:anywhere] text-slate-700">{e.answer.answer}</p>
-                  {e.answer.notice && <p className="mt-2 text-xs text-slate-500">{e.answer.notice}</p>}
+                  <p className="mt-1.5 leading-relaxed [overflow-wrap:anywhere] text-bone/85">{e.answer.answer}</p>
+                  {e.answer.notice && <p className="mt-2 text-xs text-muted">{e.answer.notice}</p>}
                 </div>
               )}
             </li>
