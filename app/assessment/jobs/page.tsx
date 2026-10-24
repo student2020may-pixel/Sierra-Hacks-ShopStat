@@ -36,6 +36,7 @@ function summary(result: AnomalyResult): string {
   return `${jobs} added ${days} in the shop ${periodPhrase(result.jobs)}.`;
 }
 
+const SAMPLE_LABEL = "sample jobs (Valley Auto Body)";
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
 
 export default function JobsStep() {
@@ -45,14 +46,20 @@ export default function JobsStep() {
   const [source, setSource] = useState<string | null>(null);
   const [skipped, setSkipped] = useState(0);
   const [manual, setManual] = useState(false);
+  /** Sample jobs from an earlier visit: counts as done, but isn't shown until loaded again. */
+  const [savedSample, setSavedSample] = useState(false);
 
   // Coming back to this step: restore the last result instead of starting over.
   useEffect(() => {
     const saved = loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null;
-    if (saved) {
-      setResult(saved);
-      setSource(load<string>(JOBS_SOURCE_KEY) ?? "your last upload");
+    if (!saved) return;
+    const label = load<string>(JOBS_SOURCE_KEY) ?? "your last upload";
+    if (label === SAMPLE_LABEL) {
+      setSavedSample(true);
+      return;
     }
+    setResult(saved);
+    setSource(label);
   }, []);
 
   function analyze(text: string, label: string) {
@@ -99,7 +106,7 @@ export default function JobsStep() {
     try {
       const res = await fetch("/api/sample-jobs");
       if (!res.ok) throw new Error();
-      analyze(await res.text(), "sample jobs (Valley Auto Body)");
+      analyze(await res.text(), SAMPLE_LABEL);
     } catch {
       setError("We couldn't load the sample jobs. Please refresh and try again.");
     } finally {
@@ -240,7 +247,7 @@ export default function JobsStep() {
 
       <StepNav
         back="/assessment/scorecard"
-        next={{ href: "/results", label: "See results", ready: result !== null && !loading, hint: "Add your jobs or use the sample to continue." }}
+        next={{ href: "/results", label: "See results", ready: (result !== null || savedSample) && !loading, hint: "Add your jobs or use the sample to continue." }}
       />
     </main>
   );
