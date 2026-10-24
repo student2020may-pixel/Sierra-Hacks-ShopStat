@@ -13,7 +13,6 @@
 @theme static {
   --color-primary: #0f4c81;
   --color-primary-hover: #0d3f6a;
-  --color-accent: #22d3ee;
   --color-danger: #dc2626; /* below target, outliers */
   --color-warning: #f59e0b; /* slightly below target */
   --color-success: #16a34a; /* meets target */
@@ -144,8 +143,9 @@
 
 /* ———————————————————————————— Editorial design system ———————————————————————————— */
 
-/* Loading screen: wordmark fades in and out (700ms), then the screen fades away (200ms). Once per
-   visit: an inline script in the layout adds .intro-seen before first paint on later page loads. */
+/* Loading screen on every full page load (refreshes included): the wordmark fades in, holds, and
+   fades out (1.8s), then the screen lifts (400ms). In-app navigation doesn't reload the layout, so it
+   doesn't replay there. */
 .loader {
   position: fixed;
   inset: 0;
@@ -153,24 +153,24 @@
   display: grid;
   place-items: center;
   background: var(--color-night);
-  animation: loader-out 200ms ease 700ms forwards;
+  animation: loader-out 400ms ease 1800ms forwards;
 }
 .loader-mark {
   font-family: var(--font-serif);
   font-size: clamp(2.5rem, 9vw, 5rem);
   letter-spacing: 0.08em;
   color: var(--color-bone);
-  animation: loader-mark 700ms var(--ease-lux) both;
+  animation: loader-mark 1800ms var(--ease-lux) both;
 }
 @keyframes loader-mark {
-  0% { opacity: 0; transform: translateY(6px); }
-  40%, 70% { opacity: 1; transform: none; }
-  100% { opacity: 0; }
+  0% { opacity: 0; transform: translateY(8px); letter-spacing: 0.04em; }
+  30% { opacity: 1; transform: none; }
+  75% { opacity: 1; letter-spacing: 0.12em; }
+  100% { opacity: 0; letter-spacing: 0.14em; }
 }
 @keyframes loader-out {
   to { opacity: 0; visibility: hidden; }
 }
-.intro-seen .loader { display: none; }
 
 /* Film grain: a tiny SVG noise tile over everything, ignored by the pointer. */
 .grain {
@@ -182,13 +182,14 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Hero headline: each word rises and fades in, 80ms apart, after the loader (or right away if seen). */
+/* Hero headline: each word rises and fades in, 80ms apart, starting as the loader lifts. Once the
+   intro has played (.intro-done, set by the layout script), a hero mounted later starts right away. */
 .rise-word {
   display: inline-block;
   animation: rise 700ms var(--ease-lux) both;
-  animation-delay: calc(var(--i) * 80ms + var(--intro-delay, 850ms));
+  animation-delay: calc(var(--i) * 80ms + var(--intro-delay, 2000ms));
 }
-.intro-seen .rise-word { --intro-delay: 100ms; }
+.intro-done .rise-word { --intro-delay: 100ms; }
 @keyframes rise {
   from { opacity: 0; transform: translateY(0.45em); }
 }

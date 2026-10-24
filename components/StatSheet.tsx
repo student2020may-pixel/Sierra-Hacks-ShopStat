@@ -19,7 +19,7 @@ const nameLines = (full: string) => (full.length > 11 && full.includes(" ") ? [f
 
 /**
  * RPG-style "shop stat sheet": the insurer's target as a dashed shape and the shop's scores as a
- * filled red shape on a dark, cyan-gridded panel. Metrics missing from the scorecard are left off.
+ * filled red shape on a dark, gold-gridded panel. Metrics missing from the scorecard are left off.
  */
 export default function StatSheet({ metrics }: { metrics: Metric[] }) {
   const scored = metrics.filter(isScored);
@@ -33,9 +33,9 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
   return (
     <div className="overflow-hidden rounded-2xl bg-night-2 text-white ring-1 ring-line">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-white/10 px-4 py-3 sm:px-5">
-        <p className="text-xs font-semibold tracking-[0.2em] text-accent uppercase">Shop stat sheet</p>
+        <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Shop stat sheet</p>
         {level !== null && (
-          <p className="rounded-md bg-accent/15 px-2.5 py-1 font-mono text-sm font-bold text-accent ring-1 ring-accent/40">
+          <p className="rounded-md bg-gold/15 px-2.5 py-1 font-mono text-sm font-bold text-gold ring-1 ring-gold/40">
             Level {level} · Grade {letterGrade(level)}
           </p>
         )}
@@ -63,26 +63,26 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
           >
             <defs>
               <radialGradient id="stat-glow">
-                <stop offset="0%" stopColor="var(--color-accent)" stopOpacity="0.14" />
-                <stop offset="100%" stopColor="var(--color-accent)" stopOpacity="0" />
+                <stop offset="0%" stopColor="var(--color-gold)" stopOpacity="0.14" />
+                <stop offset="100%" stopColor="var(--color-gold)" stopOpacity="0" />
               </radialGradient>
             </defs>
             <circle cx={CX} cy={CY} r={R * 1.15} fill="url(#stat-glow)" />
 
-            {/* Grid: rings every 25 points and a spoke per stat, in the accent color. */}
+            {/* Grid: rings every 25 points and a spoke per stat, in gold. */}
             {[25, 50, 75, 100].map((ring) => (
               <polygon
                 key={ring}
                 points={shape(scored.map(() => ring))}
                 fill="none"
-                stroke="var(--color-accent)"
+                stroke="var(--color-gold)"
                 strokeOpacity={ring === 100 ? 0.5 : 0.22}
                 strokeWidth={ring === 100 ? 1.5 : 1}
               />
             ))}
             {scored.map((m, i) => {
               const [x, y] = at(i, R);
-              return <line key={m.key} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-accent)" strokeOpacity={0.28} />;
+              return <line key={m.key} x1={CX} y1={CY} x2={x} y2={y} stroke="var(--color-gold)" strokeOpacity={0.28} />;
             })}
 
             {/* Insurer target: the shape the shop needs to fill. */}

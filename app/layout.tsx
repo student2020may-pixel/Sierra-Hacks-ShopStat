@@ -15,12 +15,13 @@ export const viewport: Viewport = {
   themeColor: "#0b0b0c", // matches the dark nav and landing page (--color-night)
 };
 
-// Show the loading screen once per visit: later page loads in the same tab skip it before first paint.
-const INTRO_SCRIPT = `try{if(sessionStorage.getItem("ss-intro"))document.documentElement.classList.add("intro-seen");else sessionStorage.setItem("ss-intro","1")}catch(e){document.documentElement.classList.add("intro-seen")}`;
+// After the loading screen finishes, mark the intro as played so a landing hero mounted later
+// (in-app navigation) doesn't wait for a loader that isn't there.
+const INTRO_SCRIPT = `setTimeout(function(){document.documentElement.classList.add("intro-done")},2200)`;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // The intro script adds a class to <html> before React hydrates.
+    // The intro script adds a class to <html> after the loader, which React doesn't manage.
     <html lang="en" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: INTRO_SCRIPT }} />
