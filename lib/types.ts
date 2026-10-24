@@ -1,23 +1,8 @@
-export type MetricKey =
-  | "cycle_time"
-  | "customer_satisfaction"
-  | "avg_repair_cost"
-  | "supplement_rate"
-  | "alt_parts_usage"
-  | "on_time_delivery";
+import type { z } from "zod";
+import type { MetricSchema } from "./schemas";
 
-export interface Metric {
-  key: MetricKey;
-  label: string;
-  unit: "days" | "/100" | "$" | "%";
-  shopValue: number;
-  target: number;
-  higherIsBetter: boolean;
-  /** 0–100, how close the shop is to (or beyond) target. */
-  score: number;
-  /** One plain-language sentence. */
-  explanation: string;
-}
+export type Metric = z.infer<typeof MetricSchema>;
+export type MetricKey = Metric["key"];
 
 export interface Scorecard {
   shop: { name: string; shopId: string; address: string; region: string };
@@ -27,4 +12,13 @@ export interface Scorecard {
   repairsReviewed: number;
   regionalRank: { rank: number; of: number };
   metrics: Metric[];
+}
+
+/** Response body of POST /api/score. */
+export interface ScoreResponse {
+  /** "ai" when Claude read the upload, "sample" when we fell back to data/scorecard.json. */
+  source: "ai" | "sample";
+  metrics: Metric[];
+  /** Friendly note shown when source is "sample". */
+  notice?: string;
 }
