@@ -29,12 +29,12 @@ const STATS = [
 
 export default function Problem() {
   return (
-    <section id="problem" className="px-safe scroll-mt-16 bg-night py-24 text-bone sm:py-32">
+    <section id="problem" className="px-safe scroll-mt-16 bg-night py-16 text-bone sm:py-20">
       <div className="mx-auto max-w-6xl">
         <p className="text-xs tracking-[0.25em] text-gold uppercase">The problem</p>
         <WordsLightUp text={PARAGRAPH} className="mt-6 max-w-5xl font-serif text-[2rem] leading-[1.15] sm:text-5xl lg:text-6xl" />
 
-        <div className="mt-20 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
+        <div className="mt-12 grid gap-px overflow-hidden rounded-2xl border border-line bg-line md:grid-cols-3">
           {STATS.map((s, i) => (
             <Reveal key={s.label} delay={i * 90} className="bg-night p-7 sm:p-8">
               <div className="font-serif text-6xl text-bone sm:text-7xl">

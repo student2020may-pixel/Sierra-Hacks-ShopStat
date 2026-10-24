@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useReducedMotion, useScrollFrame } from "@/lib/useReducedMotion";
 
 export interface Shot {
@@ -12,11 +12,13 @@ export interface Shot {
 }
 
 /**
- * Desktop: the section pins while vertical scrolling slides the screenshots sideways.
+ * Desktop: the header and row pin while vertical scrolling slides the screenshots sideways.
+ * The pinned frame is only as tall as its content, so there's no empty band above or below.
  * Phones (and reduced motion): a swipeable row with scroll-snap.
  */
-export default function HorizontalGallery({ shots }: { shots: Shot[] }) {
+export default function HorizontalGallery({ shots, header }: { shots: Shot[]; header?: ReactNode }) {
   const section = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const reduced = useReducedMotion();
   const [wide, setWide] = useState(false);
@@ -31,12 +33,12 @@ export default function HorizontalGallery({ shots }: { shots: Shot[] }) {
   }, []);
   const pinned = wide && !reduced;
 
-  // The section is as tall as the sideways distance, so one pixel down moves the row one pixel left.
+  // The section is the frame plus the sideways distance, so one pixel down moves the row one pixel left.
   useEffect(() => {
     if (!pinned) return setHeight(null);
     const measure = () => {
       const distance = Math.max(0, (track.current?.scrollWidth ?? 0) - window.innerWidth);
-      setHeight(window.innerHeight + distance);
+      setHeight((frame.current?.offsetHeight ?? window.innerHeight) + distance);
     };
     measure();
     window.addEventListener("resize", measure);
@@ -45,10 +47,14 @@ export default function HorizontalGallery({ shots }: { shots: Shot[] }) {
 
   const update = useCallback(() => {
     const s = section.current;
+    const f = frame.current;
     const t = track.current;
-    if (!s || !t) return;
+    if (!s || !f || !t) return;
     const distance = Math.max(0, t.scrollWidth - window.innerWidth);
-    const progress = Math.min(1, Math.max(0, -s.getBoundingClientRect().top / Math.max(1, s.offsetHeight - window.innerHeight)));
+    // The frame sticks once it's vertically centered (or at the top, if it's taller than the screen).
+    const stickAt = Math.max(0, (window.innerHeight - f.offsetHeight) / 2);
+    f.style.top = `${stickAt}px`;
+    const progress = Math.min(1, Math.max(0, (stickAt - s.getBoundingClientRect().top) / Math.max(1, distance)));
     t.style.transform = `translate3d(${(-progress * distance).toFixed(1)}px, 0, 0)`;
   }, []);
   useScrollFrame(update, pinned);
@@ -58,7 +64,7 @@ export default function HorizontalGallery({ shots }: { shots: Shot[] }) {
       {/* Same 16:10 frame for every shot so the row reads evenly; taller shots crop from the top. */}
       <div className="aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-night-2">
         {/* eslint-disable-next-line @next/next/no-img-element -- static screenshots with fixed dimensions */}
-        <img src={s.src} width={s.width} height={s.height} alt={s.caption} loading="lazy" className="h-full w-full object-cover object-top" />
+        <img src={s.src} width={s.width} height={s.height} alt={s.caption} loading="lazy" className="h-full w-full object-cover object-left-top" />
       </div>
       <figcaption className="mt-4">
         <p className="font-serif text-2xl text-bone">{s.title}</p>
@@ -69,15 +75,19 @@ export default function HorizontalGallery({ shots }: { shots: Shot[] }) {
 
   if (!pinned) {
     return (
-      <div className="px-safe flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ overscrollBehaviorX: "contain" }}>
-        {cards}
-      </div>
+      <>
+        {header}
+        <div className="px-safe flex snap-x snap-mandatory gap-5 overflow-x-auto pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" style={{ overscrollBehaviorX: "contain" }}>
+          {cards}
+        </div>
+      </>
     );
   }
 
   return (
     <div ref={section} style={{ height: height ?? undefined }} className="relative">
-      <div className="sticky top-0 flex h-svh items-center overflow-hidden">
+      <div ref={frame} className="sticky top-0 overflow-hidden py-6">
+        {header}
         <div ref={track} className="flex gap-8 px-[8vw] will-change-transform">
           {cards}
         </div>
