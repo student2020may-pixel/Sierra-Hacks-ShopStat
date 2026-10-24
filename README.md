@@ -1,8 +1,8 @@
 # ShopStats
 
-ShopStats helps independent auto body shops see what's slowing down their repairs. Upload an insurer
-scorecard and a jobs export, and it scores each metric, flags the jobs that dragged on, and suggests
-the top three changes to cut repair time.
+ShopStats helps independent auto body shops see what's slowing down their repairs. A three-step shop
+assessment takes an insurer scorecard and a jobs export, scores each metric, flags the jobs that dragged
+on, and suggests the top three changes to cut repair time.
 
 Built at Sierra Hacks 2026 by Ishaan Bhatnagar and Sidhak Makkar.
 
@@ -21,10 +21,14 @@ says so. `.env` is gitignored, so never commit it.
 
 | Page | What it does |
 | --- | --- |
-| `/upload` | Upload a scorecard image or PDF. The AI reads each metric's value and target; scores are computed in code (below). |
-| `/jobs` | Upload a jobs CSV. Flags jobs that took far longer than their labor hours predict. |
-| `/results` | Stat sheet, top 3 AI fixes, a before/after estimate, and **Ask ShopStats** for questions about your own data. |
+| `/assessment/scorecard` | **Step 1 of 3.** Upload a scorecard image or PDF (or try the sample). The AI reads each metric's value and target; scores are computed in code (below). |
+| `/assessment/jobs` | **Step 2 of 3.** Upload a jobs CSV, enter up to 10 jobs by hand, or use the sample. Flags jobs that took far longer than their labor hours predict. |
+| `/results` | **Step 3 of 3.** Stat sheet, top 3 AI fixes, a before/after estimate, and **Ask ShopStats** for questions about your own data. |
 | `/mock-scorecard` | A fictional insurer scorecard for demos. |
+
+Each step's result is kept in the browser tab, so Back and Next don't lose work. The old `/upload` and
+`/jobs` links redirect to steps 1 and 2. A jobs CSV needs a job ID, labor hours, and either a days-in-shop
+column or dates in and out.
 
 ## How scores are computed
 

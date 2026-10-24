@@ -31,10 +31,10 @@ export default function Hero() {
           </p>
           <div className="animate-enter mt-9 flex flex-col items-center gap-3 [animation-delay:180ms] sm:flex-row sm:justify-center lg:justify-start">
             <Link
-              href="/upload"
+              href="/assessment/scorecard"
               className="pressable inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-7 py-4 text-base font-semibold text-ink shadow-[0_0_40px_-8px] shadow-accent/60 hover:bg-white focus-visible:ring-4 focus-visible:ring-accent/40 focus-visible:outline-none sm:w-auto"
             >
-              Upload your scorecard <span aria-hidden>→</span>
+              Start shop assessment <span aria-hidden>→</span>
             </Link>
             <Link
               href="/results"

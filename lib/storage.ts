@@ -36,3 +36,7 @@ export function isScoreResult(v: unknown): v is { metrics: unknown[] } {
 export function isJobsResult(v: unknown): v is { jobs: unknown[]; flagged: unknown[]; totalExtraDays: number } {
   return isObject(v) && Array.isArray(v.jobs) && Array.isArray(v.flagged) && typeof v.totalExtraDays === "number" && isObject(v.fit);
 }
+
+/** Labels shown when a step is revisited: the scorecard file name, and where the jobs came from. */
+export const SCORE_FILE_KEY = "shopstats:score-file";
+export const JOBS_SOURCE_KEY = "shopstats:jobs-source";

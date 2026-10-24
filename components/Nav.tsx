@@ -4,9 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/upload", label: "Upload" },
-  { href: "/jobs", label: "Jobs" },
-  { href: "/results", label: "Results" },
+  { href: "/assessment/scorecard", label: "Assessment", section: "/assessment" },
+  { href: "/results", label: "Results", section: "/results" },
 ];
 
 // Pages that should render without app chrome (e.g. for screenshots).
@@ -23,8 +22,8 @@ export default function Nav() {
           Shop<span className="text-accent">Stats</span>
         </Link>
         <ul className="flex gap-1 text-sm font-medium">
-          {links.map(({ href, label }) => {
-            const active = pathname.startsWith(href);
+          {links.map(({ href, label, section }) => {
+            const active = pathname.startsWith(section);
             return (
               <li key={href}>
                 <Link
