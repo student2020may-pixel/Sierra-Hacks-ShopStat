@@ -1,0 +1,37 @@
+[
+  {
+    "src": "/gallery/upload.jpg",
+    "width": 1920,
+    "height": 1200,
+    "title": "Upload",
+    "caption": "Step 1: a photo, PDF or screenshot of the insurer scorecard."
+  },
+  {
+    "src": "/gallery/stat-sheet.jpg",
+    "width": 1413,
+    "height": 816,
+    "title": "Stat sheet",
+    "caption": "Six metrics against the insurer's target, with the shop's level and weakest stat."
+  },
+  {
+    "src": "/gallery/jobs.jpg",
+    "width": 1488,
+    "height": 567,
+    "title": "Slow jobs",
+    "caption": "Every repair order plotted; the ones that ran long are flagged."
+  },
+  {
+    "src": "/gallery/results.jpg",
+    "width": 1488,
+    "height": 856,
+    "title": "Results",
+    "caption": "Value, target, gap and status, with a fix next to each weak metric."
+  },
+  {
+    "src": "/gallery/ask.jpg",
+    "width": 1488,
+    "height": 552,
+    "title": "Ask ShopStats",
+    "caption": "Questions answered from the shop's own numbers."
+  }
+]
