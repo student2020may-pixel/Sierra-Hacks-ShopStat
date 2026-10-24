@@ -16,21 +16,21 @@
   {
     "src": "/gallery/jobs.jpg",
     "width": 1488,
-    "height": 567,
+    "height": 579,
     "title": "Slow jobs",
     "caption": "Every repair order plotted; the ones that ran long are flagged."
   },
   {
     "src": "/gallery/results.jpg",
     "width": 1488,
-    "height": 856,
+    "height": 868,
     "title": "Results",
     "caption": "Value, target, gap and status, with a fix next to each weak metric."
   },
   {
     "src": "/gallery/ask.jpg",
     "width": 1488,
-    "height": 552,
+    "height": 564,
     "title": "Ask ShopStats",
     "caption": "Questions answered from the shop's own numbers."
   }

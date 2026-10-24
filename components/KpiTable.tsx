@@ -4,7 +4,7 @@ import { metricStatus, STATUS_STYLES, type Status } from "@/lib/status";
 import { GENERAL_TIPS } from "@/lib/tips";
 import { isScored, type Fix, type Metric, type MetricKey } from "@/lib/types";
 
-const DOT: Record<Status, string> = { meets: "bg-success", close: "bg-warning", below: "bg-danger", missing: "bg-slate-300" };
+const DOT: Record<Status, string> = { meets: "bg-success", close: "bg-warning", below: "bg-danger", missing: "bg-white/10" };
 const HIGHLIGHTED = 3;
 
 interface Props {
@@ -19,7 +19,7 @@ function StatusDot({ status }: { status: Status }) {
   return (
     <span className="inline-flex items-center gap-2 whitespace-nowrap">
       <span aria-hidden className={`h-2.5 w-2.5 shrink-0 rounded-full ${DOT[status]}`} />
-      <span className="text-xs text-slate-600">{STATUS_STYLES[status].label}</span>
+      <span className="text-xs text-bone/70">{STATUS_STYLES[status].label}</span>
     </span>
   );
 }
@@ -43,18 +43,18 @@ function assignFixes(weakest: MetricKey[], fixes: Fix[]): Map<MetricKey, Fix> {
 }
 
 function FixNote({ metricKey, fixes, fix }: { metricKey: MetricKey; fixes: Fix[] | null; fix: Fix | undefined }) {
-  if (fixes === null) return <span className="text-slate-400">Finding a fix…</span>;
+  if (fixes === null) return <span className="text-muted">Finding a fix…</span>;
   if (!fix) {
     return (
       <>
-        <span className="font-semibold text-ink">General tip:</span> {GENERAL_TIPS[metricKey]}
+        <span className="font-semibold text-bone">General tip:</span> {GENERAL_TIPS[metricKey]}
       </>
     );
   }
   return (
     <>
-      <span className="font-semibold text-ink">Recommended fix: {fix.title}.</span> {fix.explanation}
-      {fix.daysSaved > 0 && <span className="whitespace-nowrap text-success"> Saves ~{fix.daysSaved} days per car (estimate).</span>}
+      <span className="font-semibold text-bone">Recommended fix: {fix.title}.</span> {fix.explanation}
+      {fix.daysSaved > 0 && <span className="whitespace-nowrap text-success-soft"> Saves ~{fix.daysSaved} days per car (estimate).</span>}
     </>
   );
 }
@@ -74,48 +74,48 @@ export default function KpiTable({ metrics, fixes, period, jobCount }: Props) {
   const fixFor = fixes ? assignFixes(weakestInOrder, fixes) : new Map<MetricKey, Fix>();
 
   return (
-    <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
+    <section className="rounded-xl border border-line bg-night-2 ">
       <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 px-4 pt-4 sm:px-6 sm:pt-5">
-        <h2 className="text-xl font-bold text-primary">Scorecard details</h2>
-        <p className="text-sm text-slate-600">
-          Reporting period: <span className="font-semibold text-ink">{period ?? "not shown on scorecard"}</span>
+        <h2 className="font-serif text-3xl font-normal text-bone">Scorecard details</h2>
+        <p className="text-sm text-bone/70">
+          Reporting period: <span className="font-semibold text-bone">{period ?? "not shown on scorecard"}</span>
           {jobCount !== null && (
             <>
               {" · "}
-              <span className="font-semibold text-ink tabular-nums">{jobCount.toLocaleString("en-US")}</span> jobs analyzed
+              <span className="font-semibold text-bone tabular-nums">{jobCount.toLocaleString("en-US")}</span> jobs analyzed
             </>
           )}
         </p>
       </div>
       {weakest.size > 0 && (
-        <p className="px-4 pt-1 text-xs text-slate-500 sm:px-6">
+        <p className="px-4 pt-1 text-xs text-muted sm:px-6">
           Highlighted: your {weakest.size === 1 ? "weakest metric" : `${weakest.size} weakest metrics`}, with what to do about each.
         </p>
       )}
 
       {/* Phones: one card per metric, so no number gets pushed off screen. */}
-      <ul className="mt-3 divide-y divide-slate-100 sm:hidden">
+      <ul className="mt-3 divide-y divide-line sm:hidden">
         {metrics.map((m) => {
           const status = metricStatus(m);
           const weak = weakest.has(m.key);
           return (
             <li key={m.key} className={`px-4 py-3 ${weak ? "border-l-4 border-danger bg-danger/5" : ""}`}>
               <div className="flex items-start justify-between gap-3">
-                <p className="min-w-0 font-semibold text-ink">
-                  {STAT_LABELS[m.key].full} <span className="font-mono text-xs text-slate-500">{STAT_LABELS[m.key].short}</span>
+                <p className="min-w-0 font-semibold text-bone">
+                  {STAT_LABELS[m.key].full} <span className="font-mono text-xs text-muted">{STAT_LABELS[m.key].short}</span>
                 </p>
                 <StatusDot status={status} />
               </div>
               {isScored(m) ? (
-                <p className="mt-1 text-sm text-slate-600 tabular-nums">
+                <p className="mt-1 text-sm text-bone/70 tabular-nums">
                   {formatValue(m.shopValue, m.unit)} vs {formatValue(m.target, m.unit)} ·{" "}
-                  <span className={status === "meets" ? "" : "font-semibold text-danger"}>{formatVariance(m.shopValue, m.target, m.unit)}</span>
+                  <span className={status === "meets" ? "" : "font-semibold text-danger-soft"}>{formatVariance(m.shopValue, m.target, m.unit)}</span>
                 </p>
               ) : (
-                <p className="mt-1 text-sm text-slate-400">Not on this scorecard</p>
+                <p className="mt-1 text-sm text-muted">Not on this scorecard</p>
               )}
               {weak && (
-                <p className="mt-2 text-sm leading-relaxed text-slate-700">
+                <p className="mt-2 text-sm leading-relaxed text-bone/85">
                   <FixNote metricKey={m.key} fixes={fixes} fix={fixFor.get(m.key)} />
                 </p>
               )}
@@ -128,7 +128,7 @@ export default function KpiTable({ metrics, fixes, period, jobCount }: Props) {
       <div className="mt-3 hidden overflow-x-auto pb-2 sm:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-y border-slate-200 bg-page text-left text-xs text-slate-500 uppercase">
+            <tr className="border-y border-line bg-night text-left text-xs text-muted uppercase">
               <th className="px-6 py-2.5 font-semibold">Metric</th>
               <th className="px-4 py-2.5 text-right font-semibold">Your shop</th>
               <th className="px-4 py-2.5 text-right font-semibold">Insurer target</th>
@@ -142,21 +142,21 @@ export default function KpiTable({ metrics, fixes, period, jobCount }: Props) {
               const weak = weakest.has(m.key);
               const rowTint = weak ? "bg-danger/5" : "";
               return [
-                <tr key={m.key} className={`${rowTint} ${weak ? "" : "border-b border-slate-100"}`}>
+                <tr key={m.key} className={`${rowTint} ${weak ? "" : "border-b border-line"}`}>
                   <td className={`px-6 py-3 ${weak ? "border-l-4 border-danger pl-5" : ""}`}>
-                    <span className="font-semibold text-ink">{STAT_LABELS[m.key].full}</span>{" "}
-                    <span className="font-mono text-xs text-slate-500">{STAT_LABELS[m.key].short}</span>
+                    <span className="font-semibold text-bone">{STAT_LABELS[m.key].full}</span>{" "}
+                    <span className="font-mono text-xs text-muted">{STAT_LABELS[m.key].short}</span>
                   </td>
                   {isScored(m) ? (
                     <>
-                      <td className="px-4 py-3 text-right font-semibold whitespace-nowrap text-ink tabular-nums">{formatValue(m.shopValue, m.unit)}</td>
-                      <td className="px-4 py-3 text-right whitespace-nowrap text-slate-600 tabular-nums">{formatValue(m.target, m.unit)}</td>
-                      <td className={`px-4 py-3 text-right whitespace-nowrap tabular-nums ${status === "meets" ? "text-slate-600" : "font-semibold text-danger"}`}>
+                      <td className="px-4 py-3 text-right font-semibold whitespace-nowrap text-bone tabular-nums">{formatValue(m.shopValue, m.unit)}</td>
+                      <td className="px-4 py-3 text-right whitespace-nowrap text-bone/70 tabular-nums">{formatValue(m.target, m.unit)}</td>
+                      <td className={`px-4 py-3 text-right whitespace-nowrap tabular-nums ${status === "meets" ? "text-bone/70" : "font-semibold text-danger-soft"}`}>
                         {formatVariance(m.shopValue, m.target, m.unit)}
                       </td>
                     </>
                   ) : (
-                    <td colSpan={3} className="px-4 py-3 text-right text-slate-400">
+                    <td colSpan={3} className="px-4 py-3 text-right text-muted">
                       Not on this scorecard
                     </td>
                   )}
@@ -165,8 +165,8 @@ export default function KpiTable({ metrics, fixes, period, jobCount }: Props) {
                   </td>
                 </tr>,
                 weak && (
-                  <tr key={`${m.key}-fix`} className={`${rowTint} border-b border-slate-100`}>
-                    <td colSpan={5} className="border-l-4 border-danger px-5 pb-3 leading-relaxed text-slate-700">
+                  <tr key={`${m.key}-fix`} className={`${rowTint} border-b border-line`}>
+                    <td colSpan={5} className="border-l-4 border-danger px-5 pb-3 leading-relaxed text-bone/85">
                       <FixNote metricKey={m.key} fixes={fixes} fix={fixFor.get(m.key)} />
                     </td>
                   </tr>

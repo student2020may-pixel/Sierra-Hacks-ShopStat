@@ -37,7 +37,7 @@ shots.push({ src: "/gallery/upload.jpg", width: 1920, height: 1200, title: "Uplo
 
 await page.goto(`${BASE}/results`);
 await page.waitForSelector("text=Shop stat sheet");
-await capture("stat-sheet", page.locator("div.bg-ink").first(), "Stat sheet", "Six metrics against the insurer's target, with the shop's level and weakest stat.");
+await capture("stat-sheet", page.locator("div.bg-night-2", { hasText: "Shop stat sheet" }).last(), "Stat sheet", "Six metrics against the insurer's target, with the shop's level and weakest stat.");
 
 await page.goto(`${BASE}/assessment/jobs`);
 await page.click("text=Use sample jobs");

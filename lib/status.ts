@@ -12,10 +12,10 @@ export function metricStatus(m: Metric): Status {
   return m.score >= CLOSE_SCORE ? "close" : "below";
 }
 
-// Amber is too light for text on white, so the "close" chip uses ink text on an amber tint.
+// Chips sit on the dark app surfaces, so their text uses the lighter "-soft" status colors.
 export const STATUS_STYLES: Record<Status, { label: string; bar: string; chip: string }> = {
-  meets: { label: "Meets target", bar: "bg-success", chip: "bg-success/10 text-success" },
-  close: { label: "Close", bar: "bg-warning", chip: "bg-warning/20 text-ink" },
-  below: { label: "Below target", bar: "bg-danger", chip: "bg-danger/10 text-danger" },
-  missing: { label: "Not on this scorecard", bar: "bg-slate-200", chip: "bg-slate-200/70 text-slate-600" },
+  meets: { label: "Meets target", bar: "bg-success", chip: "bg-success/15 text-success-soft" },
+  close: { label: "Close", bar: "bg-warning", chip: "bg-warning/15 text-warning" },
+  below: { label: "Below target", bar: "bg-danger", chip: "bg-danger/15 text-danger-soft" },
+  missing: { label: "Not on this scorecard", bar: "bg-white/10", chip: "bg-white/10 text-muted" },
 };

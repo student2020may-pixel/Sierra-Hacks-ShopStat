@@ -4,9 +4,9 @@ const STEPS = ["Insurer scorecard", "Recent jobs", "Your results"];
 export default function Progress({ step }: { step: 1 | 2 | 3 }) {
   return (
     <div>
-      <p className="text-sm font-semibold text-primary">
+      <p className="text-sm font-semibold text-gold">
         Step {step} of {STEPS.length}
-        <span className="font-normal text-slate-500"> · {STEPS[step - 1]}</span>
+        <span className="font-normal text-muted"> · {STEPS[step - 1]}</span>
       </p>
       <ol className="mt-2 grid grid-cols-3 gap-1.5" aria-label="Assessment progress">
         {STEPS.map((label, i) => (
@@ -17,9 +17,9 @@ export default function Progress({ step }: { step: 1 | 2 | 3 }) {
             </span>
             <span
               aria-hidden
-              className={`block h-1.5 rounded-full transition-colors duration-300 ${i + 1 <= step ? "bg-primary" : "bg-slate-200"}`}
+              className={`block h-1.5 rounded-full transition-colors duration-300 ${i + 1 <= step ? "bg-gold" : "bg-white/10"}`}
             />
-            <span aria-hidden className={`mt-1.5 hidden text-xs sm:block ${i + 1 <= step ? "text-ink" : "text-slate-400"}`}>
+            <span aria-hidden className={`mt-1.5 hidden text-xs sm:block ${i + 1 <= step ? "text-bone" : "text-muted"}`}>
               {label}
             </span>
           </li>
