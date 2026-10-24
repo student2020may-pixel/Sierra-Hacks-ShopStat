@@ -12,7 +12,10 @@
   "period": "Q3 2026 (Jul 1 – Sep 30)",
   "issuedOn": "2026-10-08",
   "repairsReviewed": 142,
-  "regionalRank": { "rank": 27, "of": 34 },
+  "regionalRank": {
+    "rank": 27,
+    "of": 34
+  },
   "metrics": [
     {
       "key": "cycle_time",
@@ -21,7 +24,7 @@
       "shopValue": 11.8,
       "target": 7.5,
       "higherIsBetter": false,
-      "score": 38,
+      "score": 35,
       "explanation": "Cars are staying in your shop about 4 days longer than the insurer wants, which is the biggest drag on your rating."
     },
     {
@@ -71,7 +74,7 @@
       "shopValue": 69,
       "target": 92,
       "higherIsBetter": true,
-      "score": 35,
+      "score": 38,
       "explanation": "Fewer than 7 in 10 cars go back on the promised date, far below the 92% target."
     }
   ]

@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import Notice from "@/components/Notice";
 import OtherMetrics from "@/components/OtherMetrics";
+import StatSheet from "@/components/StatSheet";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import scorecardData from "@/data/scorecard.json";
@@ -167,7 +168,10 @@ export default function UploadPage() {
               Next: check your jobs →
             </Link>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 animate-enter">
+            <StatSheet metrics={result.metrics} />
+          </div>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {result.metrics.map((m, i) => (
               <div key={m.key} className="animate-enter" style={{ animationDelay: `${i * 50}ms` }}>
                 <MetricCard metric={m} />
