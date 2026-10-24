@@ -51,7 +51,7 @@ export default function Hero() {
           <span>Scroll</span>
           <span aria-hidden className="scroll-cue relative block h-10 w-px overflow-hidden bg-line" />
         </a>
-        <p className="text-right">37.80° N · 121.22° W</p>
+        <span aria-hidden />
       </div>
     </section>
   );
