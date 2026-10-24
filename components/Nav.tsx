@@ -84,7 +84,7 @@ function NavBar({ sample }: { sample: boolean }) {
         } ${solid ? "border-b border-line bg-night/70 backdrop-blur-md" : "border-b border-transparent bg-transparent"}`}
       >
         <nav className="px-safe mx-auto flex h-15 max-w-6xl items-center justify-between" aria-label="Main">
-          <Link href="/" className="pressable font-serif text-2xl text-bone">
+          <Link href="/" className="pressable font-serif text-3xl text-bone sm:text-4xl">
             Shop<span className="text-gold italic">Stats</span>
           </Link>
 
