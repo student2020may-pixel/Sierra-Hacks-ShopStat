@@ -12,7 +12,7 @@ import Spinner from "@/components/Spinner";
 import scorecardData from "@/data/scorecard.json";
 import { shrinkImage } from "@/lib/image";
 import { isScoreResult, load, loadValid, save, SCORE_FILE_KEY, SCORE_KEY } from "@/lib/storage";
-import type { Scorecard, ScoreResponse } from "@/lib/types";
+import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
 
 const ACCEPT = "image/png,image/jpeg,image/webp,image/gif,application/pdf";
 /** Matches the server limit; Vercel rejects bigger bodies before our code runs. */
@@ -62,6 +62,14 @@ export default function ScorecardStep() {
     setResultName(name);
     save(SCORE_KEY, data);
     save(SCORE_FILE_KEY, name);
+  }
+
+  /** A hand correction from a metric card: swap it in and keep it for the next steps. */
+  function updateMetric(updated: Metric) {
+    if (!result) return;
+    const next = { ...result, metrics: result.metrics.map((m) => (m.key === updated.key ? updated : m)) };
+    setResult(next);
+    save(SCORE_KEY, next);
   }
 
   function useSample() {
@@ -203,13 +211,17 @@ export default function ScorecardStep() {
             </div>
           )}
           <h2 className="text-xl font-bold text-primary">Your scores</h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Check the numbers we read. If one is wrong, tap <span className="font-semibold text-primary">Edit</span> to fix it and the
+            score updates.
+          </p>
           <div className="mt-4 animate-enter">
             <StatSheet metrics={result.metrics} />
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {result.metrics.map((m, i) => (
               <div key={m.key} className="animate-enter" style={{ animationDelay: `${i * 50}ms` }}>
-                <MetricCard metric={m} />
+                <MetricCard metric={m} onChange={updateMetric} />
               </div>
             ))}
           </div>

@@ -31,6 +31,8 @@ export const MetricSchema = z.object({
   higherIsBetter: z.boolean(),
   score: z.number().nullable(),
   explanation: z.string(),
+  /** True when the shop owner corrected the value or target by hand. */
+  edited: z.boolean().optional(),
 });
 
 /** A relevant metric on the scorecard that isn't one of the six (touch time, comeback rate, ...). */

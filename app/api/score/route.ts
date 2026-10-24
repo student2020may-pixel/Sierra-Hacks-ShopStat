@@ -5,8 +5,8 @@ import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
 import { getClient, MODEL } from "@/lib/openai";
 import { clip } from "@/lib/text";
-import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema, type MetricUnit } from "@/lib/schemas";
-import { scoreMetric } from "@/lib/scoring";
+import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
+import { plausible, scoreMetric } from "@/lib/scoring";
 import { isScored, type Metric, type OtherMetric, type Scorecard, type ScoreResponse } from "@/lib/types";
 import type { z } from "zod";
 import type { ExtractedMetricSchema } from "@/lib/schemas";
@@ -56,17 +56,6 @@ other_metrics: any OTHER performance metrics on the scorecard that matter to a b
 /** At most this many "Also found" metrics, so a dense scorecard can't flood the page. */
 const MAX_OTHER_METRICS = 8;
 
-/**
- * Values outside these ranges can't be real (a 142% rate, a 1,284-day cycle time), so they're a
- * misread and the metric is treated as not on the scorecard rather than scored.
- */
-const PLAUSIBLE: Record<MetricUnit, [number, number]> = {
-  "%": [0, 100],
-  "/100": [0, 100],
-  days: [0, 365],
-  $: [0, 100_000],
-};
-const plausible = (v: number, unit: MetricUnit) => Number.isFinite(v) && v >= PLAUSIBLE[unit][0] && v <= PLAUSIBLE[unit][1];
 
 function sample(notice: string): NextResponse<ScoreResponse> {
   return NextResponse.json({
