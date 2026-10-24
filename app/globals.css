@@ -250,38 +250,6 @@
   .link-lux:hover { background-size: 100% 1px; }
 }
 
-/* Floating labels: the label sits in the field and moves up and shrinks when focused or filled. */
-.field { position: relative; }
-.field input,
-.field textarea {
-  width: 100%;
-  border: 0;
-  border-bottom: 1px solid var(--color-line);
-  background: transparent;
-  padding: 1.4rem 0 0.5rem;
-  color: var(--color-bone);
-  outline: none;
-  transition: border-color 200ms ease;
-}
-.field input:focus,
-.field textarea:focus { border-color: var(--color-gold); }
-.field label {
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  top: 1.35rem;
-  color: var(--color-muted);
-  transform-origin: left top;
-  transition: transform 200ms var(--ease-lux), color 200ms ease;
-}
-.field input:focus + label,
-.field input:not(:placeholder-shown) + label,
-.field textarea:focus + label,
-.field textarea:not(:placeholder-shown) + label {
-  transform: translateY(-1.2rem) scale(0.78);
-  color: var(--color-gold);
-}
-
 /* Reduced motion: no loader, no grain movement, everything in its final state. */
 @media (prefers-reduced-motion: reduce) {
   .loader { display: none; }
@@ -295,8 +263,7 @@
   .reveal { opacity: 1; transform: none; transition: none; }
   .btn-lux,
   .btn-lux .arrow,
-  .link-lux,
-  .field label { transition: none; }
+  .link-lux { transition: none; }
 }
 
 /* Full-screen phone menu: links rise in one after another. */
