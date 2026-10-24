@@ -15,7 +15,6 @@ export default function Hero() {
           <Link
             href="/upload"
             className="inline-flex items-center justify-center px-6 sm:px-8 py-3 sm:py-4 text-base sm:text-lg font-semibold rounded-xl bg-[#0F4C81] text-white shadow-lg hover:shadow-xl hover:bg-[#0d3f6a] transition-all duration-200 focus:outline-none focus:ring-4 focus:ring-[#22D3EE]/30"
-            style={{ backgroundColor: "[COLOR 1]", "--tw-ring-color": "[COLOR 2]" }}
           >
             Upload your scorecard
           </Link>

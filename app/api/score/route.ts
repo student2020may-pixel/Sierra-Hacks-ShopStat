@@ -1,8 +1,9 @@
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import OpenAI from "openai";
+import { zodTextFormat } from "openai/helpers/zod";
+import type { ResponseInputContent } from "openai/resources/responses/responses";
 import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
-import { getClient, MODEL } from "@/lib/claude";
+import { getClient, MODEL } from "@/lib/openai";
 import { METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
 import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
 
@@ -10,8 +11,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_BYTES = 10 * 1024 * 1024;
-const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"] as const;
-type ImageType = (typeof IMAGE_TYPES)[number];
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
 
 const SYSTEM_PROMPT = `You read insurer scorecards for auto body shops and explain them to shop owners in plain language.
 
@@ -67,40 +67,37 @@ export async function POST(req: Request) {
   if (file.size > MAX_BYTES) return badRequest("That file is over 10 MB. Try a smaller image or PDF.");
 
   const isPdf = file.type === "application/pdf";
-  const isImage = (IMAGE_TYPES as readonly string[]).includes(file.type);
+  const isImage = IMAGE_TYPES.includes(file.type);
   if (!isPdf && !isImage) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
 
   const client = getClient();
   if (!client) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
 
-  const data = Buffer.from(await file.arrayBuffer()).toString("base64");
-  const fileBlock: Anthropic.ContentBlockParam = isPdf
-    ? { type: "document", source: { type: "base64", media_type: "application/pdf", data } }
-    : { type: "image", source: { type: "base64", media_type: file.type as ImageType, data } };
+  const dataUrl = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+  const fileInput: ResponseInputContent = isPdf
+    ? { type: "input_file", filename: file.name || "scorecard.pdf", file_data: dataUrl }
+    : { type: "input_image", image_url: dataUrl, detail: "high" };
 
   try {
-    const response = await client.messages.parse({
+    const response = await client.responses.parse({
       model: MODEL,
-      max_tokens: 4000,
-      system: SYSTEM_PROMPT,
-      output_config: { effort: "low", format: zodOutputFormat(ScoreOutputSchema) },
-      messages: [{ role: "user", content: [fileBlock, { type: "text", text: "Score this shop's scorecard." }] }],
+      instructions: SYSTEM_PROMPT,
+      input: [{ role: "user", content: [fileInput, { type: "input_text", text: "Score this shop's scorecard." }] }],
+      text: { format: zodTextFormat(ScoreOutputSchema, "scorecard") },
     });
 
-    if (response.stop_reason === "refusal") {
-      return sample("The AI couldn't read this file, so we're showing the sample scorecard.");
-    }
-    const metrics = response.parsed_output && normalize(response.parsed_output.metrics);
+    // output_parsed is null when the model refused or the output didn't match the schema.
+    const metrics = response.output_parsed && normalize(response.output_parsed.metrics);
     if (!metrics) {
       return sample("The AI couldn't find all six metrics in this file, so we're showing the sample scorecard.");
     }
     return NextResponse.json<ScoreResponse>({ source: "ai", metrics });
   } catch (err) {
-    console.error("[api/score] Claude call failed:", err);
-    if (err instanceof Anthropic.AuthenticationError) {
-      return sample("The API key was rejected, so we're showing the sample scorecard. Check ANTHROPIC_API_KEY in .env.");
+    console.error("[api/score] OpenAI call failed:", err);
+    if (err instanceof OpenAI.AuthenticationError) {
+      return sample("The API key was rejected, so we're showing the sample scorecard. Check OPENAI_API_KEY in .env.");
     }
-    if (err instanceof Anthropic.RateLimitError) {
+    if (err instanceof OpenAI.RateLimitError) {
       return sample("The AI is busy right now, so we're showing the sample scorecard. Try again in a minute.");
     }
     return sample("We couldn't reach the AI just now, so we're showing the sample scorecard.");
