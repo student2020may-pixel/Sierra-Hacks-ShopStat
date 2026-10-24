@@ -1,11 +1,106 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/*
+ * ShopStats color tokens — the single source for every app page and chart.
+ * Tailwind classes: bg-primary, text-danger, border-success/30, etc.
+ * Charts (Recharts SVG) reference the same tokens as var(--color-*).
+ * "static" keeps every token emitted even if no class uses it, so charts can rely on it.
+ */
+@theme static {
+  --color-primary: #0f4c81;
+  --color-primary-hover: #0d3f6a;
+  --color-accent: #22d3ee;
+  --color-danger: #dc2626; /* below target, outliers */
+  --color-warning: #f59e0b; /* slightly below target */
+  --color-success: #16a34a; /* meets target */
+  --color-page: #f8fafc;
+  --color-ink: #0f172a;
+
+  /* Strong ease-out: starts fast so entering content feels immediate. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
+/* Content entering after a load: a short fade with a small lift. Stagger with style={{ animationDelay }}. */
+@theme {
+  --animate-enter: enter 260ms var(--ease-out) both;
+  --animate-spin-fast: spin 700ms linear infinite;
+
+  @keyframes enter {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+  }
+}
+
+/* Reduced motion keeps the fade (it helps show what changed) but drops the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .animate-enter {
+    animation-name: enter-fade;
+  }
+}
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Hover styles only for precise pointers, so a tap on a phone doesn't leave a hover stuck on. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/* Buttons and button-like links: instant press feedback, no double-tap delay, no long-press text selection. */
+@utility pressable {
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition:
+    transform 150ms var(--ease-out),
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease;
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+/* Page gutters that also clear the notch in landscape and the home indicator. */
+@utility px-safe {
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+@utility pb-safe {
+  padding-bottom: calc(2.5rem + env(safe-area-inset-bottom));
+}
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent; /* each control has its own :active state */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-page);
+    color: var(--color-ink);
+  }
+
+  /* iOS zooms the page into any input under 16px and doesn't zoom back out. */
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1em);
+  }
+
+  a,
+  button,
+  label {
+    touch-action: manipulation;
+  }
 }

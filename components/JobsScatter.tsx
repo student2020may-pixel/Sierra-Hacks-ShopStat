@@ -15,8 +15,9 @@ import {
 } from "recharts";
 import type { AnomalyResult, ScoredJob } from "@/lib/anomaly";
 
-const NORMAL = "#3b82f6"; // blue-500
-const OUTLIER = "#dc2626"; // red-600
+// Theme tokens from app/globals.css.
+const NORMAL = "var(--color-primary)";
+const OUTLIER = "var(--color-danger)";
 const INK_MUTED = "#64748b"; // slate-500
 
 function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload: ScoredJob }[] }) {
@@ -24,9 +25,9 @@ function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload
   if (!active || !job) return null;
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md">
-      <p className="font-semibold text-slate-900">
+      <p className="font-semibold text-ink">
         {job.jobId}
-        {job.isOutlier && <span className="ml-2 font-bold text-red-700">Outlier</span>}
+        {job.isOutlier && <span className="ml-2 font-bold text-danger">Outlier</span>}
       </p>
       <p>{job.laborHours} labor hours</p>
       <p>
@@ -36,38 +37,70 @@ function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload
   );
 }
 
+/** Job IDs differ at the end (RO-2026-0003481-SUPPLEMENT-2), so shorten them in the middle. */
+function shortId(id: string, max = 14): string {
+  return id.length <= max ? id : `${id.slice(0, 6)}…${id.slice(-(max - 7))}`;
+}
+
+type LabelSpot = { side: "left" | "right"; below: boolean };
+
+/** Approximate plot height and label line height in px, used to tell when two labels would overlap. */
+const PLOT_HEIGHT_PX = 210;
+const LABEL_LINE_PX = 14;
+
 /**
- * Label side per outlier: right by default, left when the label would collide with a
- * neighbor's. Walks from the largest job down so the left-most of a crowded pair goes left.
+ * Label placement per outlier, aligned with the outliers array. Each label takes the first spot
+ * that doesn't overlap a label already placed: right, left, then the same sides one line lower.
+ * Labels near the right edge never go right, near the left edge (the y-axis) never left. With no
+ * free spot the label is skipped; the table below lists every job. Walks from the largest job
+ * down so the left-most of a crowded pair goes left.
  */
-function labelSides(outliers: ScoredJob[]): Map<string, "left" | "right"> {
-  const sides = new Map<string, "left" | "right">();
-  const byHoursDesc = [...outliers].sort((a, b) => b.laborHours - a.laborHours);
-  byHoursDesc.forEach((job, i) => {
-    const crowded = byHoursDesc
-      .slice(0, i)
-      .some(
-        (o) =>
-          sides.get(o.jobId) === "right" &&
-          Math.abs(o.laborHours - job.laborHours) < 6 &&
-          Math.abs(o.daysInShop - job.daysInShop) < 3,
-      );
-    sides.set(job.jobId, crowded ? "left" : "right");
+function labelSpots(outliers: ScoredJob[], maxHours: number, maxDays: number): (LabelSpot | null)[] {
+  const spots: (LabelSpot | null)[] = new Array(outliers.length);
+  const order = outliers.map((_, i) => i).sort((a, b) => outliers[b].laborHours - outliers[a].laborHours);
+  const labelY = (job: ScoredJob, spot: LabelSpot) =>
+    (-job.daysInShop * PLOT_HEIGHT_PX) / maxDays + (spot.below ? LABEL_LINE_PX : 0);
+  order.forEach((idx, n) => {
+    const job = outliers[idx];
+    const nearRight = job.laborHours > maxHours * 0.7;
+    const nearLeft = job.laborHours < maxHours * 0.4;
+    const candidates = (
+      [
+        { side: "right", below: false },
+        { side: "left", below: false },
+        { side: "left", below: true },
+        { side: "right", below: true },
+      ] as LabelSpot[]
+    ).filter((c) => !(nearRight && c.side === "right") && !(nearLeft && c.side === "left"));
+    const overlaps = (c: LabelSpot) =>
+      order.slice(0, n).some((o) => {
+        const other = spots[o];
+        return (
+          other !== null &&
+          other.side === c.side &&
+          Math.abs(outliers[o].laborHours - job.laborHours) < maxHours * 0.3 &&
+          Math.abs(labelY(outliers[o], other) - labelY(job, c)) < LABEL_LINE_PX - 1
+        );
+      });
+    spots[idx] = candidates.find((c) => !overlaps(c)) ?? null;
   });
-  return sides;
+  return spots;
 }
 
 export default function JobsScatter({ result }: { result: AnomalyResult }) {
   const normal = result.jobs.filter((j) => !j.isOutlier);
   const outliers = result.jobs.filter((j) => j.isOutlier);
-  const sides = labelSides(outliers);
   const maxHours = Math.ceil(Math.max(...result.jobs.map((j) => j.laborHours)) / 5) * 5;
+  const maxDays = Math.max(...result.jobs.map((j) => j.daysInShop), 1) * 1.05;
+  const spots = labelSpots(outliers, maxHours, maxDays);
+  // Past a few dozen outliers, labels turn into noise; the table below lists them all.
+  const showLabels = outliers.length <= 12;
   const { baseDays, daysPerLaborHour } = result.fit;
 
   return (
-    <div className="h-80 w-full">
+    <div className="h-72 w-full sm:h-80">
       <ResponsiveContainer>
-        <ScatterChart margin={{ top: 10, right: 60, bottom: 30, left: 0 }}>
+        <ScatterChart margin={{ top: 10, right: 16, bottom: 30, left: -8 }}>
           <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" />
           <XAxis
             type="number"
@@ -105,23 +138,25 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
           />
           <Scatter name="Normal jobs" data={normal} fill={NORMAL} stroke="#fff" strokeWidth={2} isAnimationActive={false} />
           <Scatter name="Outliers" data={outliers} fill={OUTLIER} stroke="#fff" strokeWidth={2} isAnimationActive={false}>
-            <LabelList
+            {showLabels && <LabelList
               dataKey="jobId"
-              content={({ x, y, value }) => {
-                const left = sides.get(String(value)) === "left";
+              content={({ x, y, value, index }) => {
+                const spot = spots[index ?? 0];
+                if (!spot) return null;
+                const left = spot.side === "left";
                 return (
                   <text
                     x={Number(x) + (left ? -6 : 18)}
-                    y={Number(y) + 9}
+                    y={Number(y) + 9 + (spot.below ? 14 : 0)}
                     textAnchor={left ? "end" : "start"}
                     fill="#334155"
                     fontSize={11}
                   >
-                    {value}
+                    {shortId(String(value))}
                   </text>
                 );
               }}
-            />
+            />}
           </Scatter>
         </ScatterChart>
       </ResponsiveContainer>

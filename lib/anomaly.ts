@@ -48,11 +48,17 @@ function median(values: number[]): number {
   return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
 }
 
+/** Pairwise slopes grow as n², so large files estimate the slope from an evenly spaced sample. */
+const MAX_SLOPE_POINTS = 500;
+
 function theilSen(xs: number[], ys: number[]): { intercept: number; slope: number } {
+  const step = Math.max(1, Math.ceil(xs.length / MAX_SLOPE_POINTS));
+  const sx = xs.filter((_, i) => i % step === 0);
+  const sy = ys.filter((_, i) => i % step === 0);
   const slopes: number[] = [];
-  for (let i = 0; i < xs.length; i++) {
-    for (let j = i + 1; j < xs.length; j++) {
-      if (xs[j] !== xs[i]) slopes.push((ys[j] - ys[i]) / (xs[j] - xs[i]));
+  for (let i = 0; i < sx.length; i++) {
+    for (let j = i + 1; j < sx.length; j++) {
+      if (sx[j] !== sx[i]) slopes.push((sy[j] - sy[i]) / (sx[j] - sx[i]));
     }
   }
   const slope = slopes.length ? median(slopes) : 0;

@@ -4,27 +4,43 @@ import type { ResponseInputContent } from "openai/resources/responses/responses"
 import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
 import { getClient, MODEL } from "@/lib/openai";
-import { METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
-import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
+import { clip } from "@/lib/text";
+import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema, type MetricUnit } from "@/lib/schemas";
+import { isScored, type Metric, type OtherMetric, type Scorecard, type ScoreResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-const MAX_BYTES = 10 * 1024 * 1024;
-const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+// Vercel rejects request bodies over ~4.5 MB before this code runs; the upload page shrinks photos first.
+const MAX_BYTES = 4.5 * 1024 * 1024;
+/**
+ * Identifies the file from its first bytes. Browsers sometimes send no MIME type (some Android
+ * pickers) or a wrong one (a renamed file), and the model needs the real type.
+ */
+function sniffType(bytes: Uint8Array): string | null {
+  const ascii = (start: number, len: number) => String.fromCharCode(...bytes.subarray(start, start + len));
+  if (bytes[0] === 0x89 && ascii(1, 3) === "PNG") return "image/png";
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
+  if (ascii(0, 4) === "GIF8") return "image/gif";
+  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
+  if (ascii(0, 5) === "%PDF-") return "application/pdf";
+  return null;
+}
+
+const METRIC_LIST = METRIC_KEYS.map((key) => {
+  const d = METRIC_DEFS[key];
+  return `- ${key}: "${d.label}", unit "${d.unit}", ${d.higherIsBetter ? "higher" : "lower"} is better`;
+}).join("\n");
 
 const SYSTEM_PROMPT = `You read insurer scorecards for auto body shops and explain them to shop owners in plain language.
 
-Extract these six metrics from the uploaded scorecard. Use exactly these keys, labels, units, and directions:
-- cycle_time: "Cycle Time", unit "days", lower is better
-- customer_satisfaction: "Customer Satisfaction (CSI)", unit "/100", higher is better
-- avg_repair_cost: "Average Repair Cost", unit "$", lower is better
-- supplement_rate: "Supplement Rate", unit "%", lower is better
-- alt_parts_usage: "Alternate Parts Usage", unit "%", higher is better
-- on_time_delivery: "On-Time Delivery", unit "%", higher is better
+Look for these six metrics on the uploaded scorecard. Use exactly these keys, labels, units, and directions:
+${METRIC_LIST}
 
 For each metric return the shop's value and the insurer's target as plain numbers (no symbols; 33% → 33, $3,410 → 3410).
 The scorecard may use different names for a metric (e.g. "repair cycle time", "CSI", "severity", "parts utilization") — map them.
+
+If a metric is NOT on the scorecard, do not guess or estimate it: set shopValue, target, and score to null, and set explanation to "Not on this scorecard." If the shop's value is shown but no target is, set target and score to null too.
 
 score (0–100) reflects how the shop is doing against the target:
 - Meets or beats the target: 85–100 (higher the further past target).
@@ -34,12 +50,30 @@ score (0–100) reflects how the shop is doing against the target:
 
 explanation: one short sentence a busy shop owner understands — what the number means and whether it's helping or hurting. No jargon, no metric codes.
 
-Return all six metrics, in the order listed. If a metric truly isn't on the scorecard, make your best estimate from context and say so in its explanation.`;
+Return all six metrics, in the order listed.
+
+other_metrics: any OTHER performance metrics on the scorecard that matter to a body shop and aren't one of the six — for example touch time, comeback/redo rate, labor efficiency, photo estimate accuracy, rental days, total loss rate. For each: label as printed, value and target as plain numbers (null if not shown), unit as printed ("%", "$", "hours", "days", or "" if none), and note: one plain-language sentence on what it means for the shop. Leave out shop details, dates, rankings, and anything that isn't a performance metric. Return an empty array if there are none.`;
+
+/** At most this many "Also found" metrics, so a dense scorecard can't flood the page. */
+const MAX_OTHER_METRICS = 8;
+
+/**
+ * Values outside these ranges can't be real (a 142% rate, a 1,284-day cycle time), so they're a
+ * misread and the metric is treated as not on the scorecard rather than scored.
+ */
+const PLAUSIBLE: Record<MetricUnit, [number, number]> = {
+  "%": [0, 100],
+  "/100": [0, 100],
+  days: [0, 365],
+  $: [0, 100_000],
+};
+const plausible = (v: number, unit: MetricUnit) => Number.isFinite(v) && v >= PLAUSIBLE[unit][0] && v <= PLAUSIBLE[unit][1];
 
 function sample(notice: string): NextResponse<ScoreResponse> {
   return NextResponse.json({
     source: "sample",
     metrics: (scorecardData as Scorecard).metrics,
+    other_metrics: [],
     notice,
   });
 }
@@ -48,11 +82,45 @@ function badRequest(error: string) {
   return NextResponse.json({ error }, { status: 400 });
 }
 
-/** Puts metrics in canonical order and clamps scores; returns null if any metric is missing. */
-function normalize(metrics: Metric[]): Metric[] | null {
-  const ordered = METRIC_KEYS.map((key) => metrics.find((m) => m.key === key));
-  if (ordered.some((m) => !m)) return null;
-  return (ordered as Metric[]).map((m) => ({ ...m, score: Math.round(Math.min(100, Math.max(0, m.score))) }));
+/**
+ * Returns the six metrics in canonical order. A metric the model skipped, or returned with only
+ * some of its numbers, becomes "not on this scorecard" (all three numbers null) — never a guess.
+ */
+function normalize(metrics: Metric[]): Metric[] {
+  return METRIC_KEYS.map((key) => {
+    const m = metrics.find((x) => x.key === key);
+    const d = METRIC_DEFS[key];
+    const usable =
+      m &&
+      m.shopValue !== null &&
+      m.target !== null &&
+      m.score !== null &&
+      plausible(m.shopValue, d.unit) &&
+      plausible(m.target, d.unit);
+    if (!m || !usable) {
+      return { key, ...d, shopValue: null, target: null, score: null, explanation: "Not on this scorecard." };
+    }
+    return {
+      ...m,
+      ...d,
+      score: Math.round(Math.min(100, Math.max(0, m.score!))),
+      explanation: clip(m.explanation, 240),
+    };
+  });
+}
+
+function normalizeOther(others: OtherMetric[]): OtherMetric[] {
+  return others
+    .map((o) => ({
+      ...o,
+      label: clip(o.label, 60),
+      unit: clip(o.unit, 24),
+      note: clip(o.note, 200),
+      value: o.value !== null && Number.isFinite(o.value) ? o.value : null,
+      target: o.target !== null && Number.isFinite(o.target) ? o.target : null,
+    }))
+    .filter((o) => o.label && (o.value !== null || o.note))
+    .slice(0, MAX_OTHER_METRICS);
 }
 
 export async function POST(req: Request) {
@@ -64,16 +132,17 @@ export async function POST(req: Request) {
     return badRequest("We couldn't read that upload. Please try choosing the file again.");
   }
   if (!file || file.size === 0) return badRequest("Please choose a scorecard image or PDF to upload.");
-  if (file.size > MAX_BYTES) return badRequest("That file is over 10 MB. Try a smaller image or PDF.");
+  if (file.size > MAX_BYTES) return badRequest("That file is over 4.5 MB. Try a screenshot or a smaller PDF.");
 
-  const isPdf = file.type === "application/pdf";
-  const isImage = IMAGE_TYPES.includes(file.type);
-  if (!isPdf && !isImage) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const type = sniffType(bytes);
+  if (!type) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
+  const isPdf = type === "application/pdf";
 
   const client = getClient();
   if (!client) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
 
-  const dataUrl = `data:${file.type};base64,${Buffer.from(await file.arrayBuffer()).toString("base64")}`;
+  const dataUrl = `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
   const fileInput: ResponseInputContent = isPdf
     ? { type: "input_file", filename: file.name || "scorecard.pdf", file_data: dataUrl }
     : { type: "input_image", image_url: dataUrl, detail: "high" };
@@ -87,11 +156,13 @@ export async function POST(req: Request) {
     });
 
     // output_parsed is null when the model refused or the output didn't match the schema.
-    const metrics = response.output_parsed && normalize(response.output_parsed.metrics);
-    if (!metrics) {
-      return sample("The AI couldn't find all six metrics in this file, so we're showing the sample scorecard.");
+    const parsed = response.output_parsed;
+    if (!parsed) return sample("The AI couldn't read this file, so we're showing the sample scorecard.");
+    const metrics = normalize(parsed.metrics);
+    if (!metrics.some(isScored)) {
+      return sample("We couldn't find any of the six scorecard metrics in this file, so we're showing the sample scorecard.");
     }
-    return NextResponse.json<ScoreResponse>({ source: "ai", metrics });
+    return NextResponse.json<ScoreResponse>({ source: "ai", metrics, other_metrics: normalizeOther(parsed.other_metrics) });
   } catch (err) {
     console.error("[api/score] OpenAI call failed:", err);
     if (err instanceof OpenAI.AuthenticationError) {
