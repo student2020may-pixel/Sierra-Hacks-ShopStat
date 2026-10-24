@@ -17,7 +17,7 @@ export default function Hero() {
       />
       <div aria-hidden className="absolute top-1/3 right-[-10%] -z-10 h-[32rem] w-[32rem] rounded-full bg-accent/25 blur-3xl" />
 
-      <div className="px-safe mx-auto grid max-w-6xl items-center gap-14 pt-14 pb-20 sm:pt-20 sm:pb-32 lg:grid-cols-[1fr_1.1fr] lg:gap-12 lg:pt-24 lg:pb-36">
+      <div className="px-safe mx-auto grid max-w-6xl items-center gap-12 pt-12 pb-16 sm:pt-16 sm:pb-28 lg:grid-cols-[1fr_1.1fr] lg:gap-12 lg:pt-20 lg:pb-32">
         <div className="text-center lg:text-left">
           <p className="animate-enter inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3 py-1 text-sm text-white/80">
             <span className="h-1.5 w-1.5 rounded-full bg-accent" aria-hidden />
