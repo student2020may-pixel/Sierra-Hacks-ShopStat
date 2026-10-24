@@ -14,8 +14,6 @@ const shots = [];
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1.5, reducedMotion: "reduce" });
-// Skip the loading screen.
-await page.addInitScript(() => sessionStorage.setItem("ss-intro", "1"));
 
 async function capture(name, locator, title, caption) {
   await locator.scrollIntoViewIfNeeded();
