@@ -3,7 +3,7 @@ import WordsLightUp from "@/components/lux/WordsLightUp";
 import CountUp from "./CountUp";
 
 const PARAGRAPH =
-  "Insurers grade collision shops on cycle time, satisfaction and cost. Those grades decide where the work goes. Most shops see them once a quarter, with no detail on which jobs hurt them.";
+  "Insurers grade collision shops on cycle time, satisfaction and cost. Those grades decide where the work goes. Many shops see them once a quarter, with no detail on which jobs hurt them.";
 
 const STATS = [
   {
