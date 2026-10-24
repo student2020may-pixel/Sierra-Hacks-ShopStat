@@ -16,6 +16,9 @@
   --color-page: #f8fafc;
   --color-ink: #0f172a;
 
+  /* Geist, bundled locally by the geist package (no Google Fonts request at build time). */
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
   /* Strong ease-out: starts fast so entering content feels immediate. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
 }
@@ -24,6 +27,15 @@
 @theme {
   --animate-enter: enter 260ms var(--ease-out) both;
   --animate-spin-fast: spin 700ms linear infinite;
+  /* Stat-sheet shape growing out from the chart's center. */
+  --animate-grow: grow 450ms var(--ease-out) both;
+
+  @keyframes grow {
+    from {
+      opacity: 0;
+      transform: scale(0.1);
+    }
+  }
 
   @keyframes enter {
     from {
@@ -35,7 +47,8 @@
 
 /* Reduced motion keeps the fade (it helps show what changed) but drops the movement. */
 @media (prefers-reduced-motion: reduce) {
-  .animate-enter {
+  .animate-enter,
+  .animate-grow {
     animation-name: enter-fade;
   }
 }

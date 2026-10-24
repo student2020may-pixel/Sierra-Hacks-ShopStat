@@ -14,25 +14,31 @@ const STATS = [
 
 export default function Problem() {
   return (
-    <section className="px-safe w-full bg-page py-12 sm:py-16 lg:py-20">
+    <section className="px-safe w-full bg-white py-20 sm:py-24">
       <div className="mx-auto max-w-6xl">
-        <h2 className="mb-8 text-center text-3xl font-bold text-ink sm:mb-12 sm:text-4xl lg:text-5xl">The problem</h2>
-        <div className="mb-6 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3 lg:gap-8">
+        <h2 className="mx-auto max-w-2xl text-center text-3xl font-semibold tracking-tight text-ink sm:text-5xl">
+          The problem
+        </h2>
+        <div className="mt-12 grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
           {STATS.map((s) => (
-            <div key={s.label} className="space-y-3 rounded-2xl border border-slate-200 bg-white p-6 text-center shadow-sm sm:p-8">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-primary">
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
+            <div
+              key={s.label}
+              className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-page p-7 sm:p-8"
+            >
+              <div aria-hidden className="absolute -top-16 -right-16 h-40 w-40 rounded-full bg-accent/10 blur-2xl" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary text-white shadow-md shadow-primary/20">
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d={s.icon} />
                 </svg>
               </div>
-              <div className="text-3xl font-bold text-primary sm:text-4xl lg:text-5xl">
+              <div className="mt-6 text-5xl font-semibold tracking-tight text-ink sm:text-6xl">
                 {"value" in s && s.value !== undefined ? <CountUp value={s.value} decimals={s.decimals} suffix={s.suffix} /> : s.text}
               </div>
-              <p className="text-base leading-relaxed text-slate-600 sm:text-lg">{s.label}</p>
+              <p className="mt-3 text-base leading-relaxed text-slate-600 sm:text-lg">{s.label}</p>
             </div>
           ))}
         </div>
-        <p className="text-center text-xs text-slate-500 sm:text-sm">Sources: J.D. Power 2025, CCC 2026, FenderBender</p>
+        <p className="mt-6 text-center text-xs text-slate-500 sm:text-sm">Sources: J.D. Power 2025, CCC 2026, FenderBender</p>
       </div>
     </section>
   );

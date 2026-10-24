@@ -1,9 +1,9 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import Notice from "@/components/Notice";
+import StatSheet from "@/components/StatSheet";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import sampleFixes from "@/data/sample-fixes.json";
@@ -14,10 +14,7 @@ import { formatCount } from "@/lib/format";
 import { isJobsResult, isScoreResult, JOBS_KEY, loadValid, SCORE_KEY } from "@/lib/storage";
 import { isScored, type Fix, type FixesRequest, type FixesResponse, type Metric, type Scorecard, type ScoredMetric, type ScoreResponse } from "@/lib/types";
 
-const ScoreRadar = dynamic(() => import("@/components/ScoreRadar"), {
-  ssr: false,
-  loading: () => <Skeleton className="h-80 sm:h-96" />,
-});
+
 
 const scorecard = scorecardData as Scorecard;
 const SHOP_NAME = scorecard.shop.name;
@@ -253,11 +250,13 @@ export default function ResultsPage() {
       <section className="animate-enter rounded-xl border border-slate-200 bg-white p-4 shadow-sm [animation-delay:60ms] sm:p-6">
         <h2 className="text-xl font-bold text-primary">Scorecard at a glance</h2>
         <p className="mt-1 text-sm text-slate-600">
-          Each score is out of 100. Anything inside the dashed line is below target.
+          Each stat is scored out of 100. Wherever the red shape falls inside the dashed target, the shop is short.
           {missingCount > 0 &&
             ` ${missingCount} metric${missingCount === 1 ? " isn't" : "s aren't"} on your scorecard, so ${missingCount === 1 ? "it's" : "they're"} left out.`}
         </p>
-        <ScoreRadar metrics={inputs.metrics} />
+        <div className="mt-4">
+          <StatSheet metrics={inputs.metrics} />
+        </div>
       </section>
 
       <section>
