@@ -16,7 +16,7 @@ export interface Scorecard {
 
 /** Response body of POST /api/score. */
 export interface ScoreResponse {
-  /** "ai" when Claude read the upload, "sample" when we fell back to data/scorecard.json. */
+  /** "ai" when the model read the upload, "sample" when we fell back to data/scorecard.json. */
   source: "ai" | "sample";
   metrics: Metric[];
   /** Friendly note shown when source is "sample". */

@@ -20,7 +20,7 @@ export const MetricSchema = z.object({
   explanation: z.string(),
 });
 
-/** What Claude must return for /api/score. */
+/** What the model must return for /api/score. */
 export const ScoreOutputSchema = z.object({
   metrics: z.array(MetricSchema),
 });
