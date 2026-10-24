@@ -143,9 +143,9 @@
 
 /* ———————————————————————————— Editorial design system ———————————————————————————— */
 
-/* Loading screen on every full page load (refreshes included): the wordmark fades in, holds, and
-   fades out (1.8s), then the screen lifts (400ms). In-app navigation doesn't reload the layout, so it
-   doesn't replay there. */
+/* Loading screen on every full page load, refreshes included. It stays up until the layout script
+   adds .loader-done (page loaded and at least 1.8s shown), then lifts over 500ms. In-app navigation
+   doesn't reload the layout, so it doesn't replay there. */
 .loader {
   position: fixed;
   inset: 0;
@@ -153,8 +153,8 @@
   display: grid;
   place-items: center;
   background: var(--color-night);
-  animation: loader-out 400ms ease 1800ms forwards;
 }
+.loader-done .loader { animation: loader-out 500ms ease forwards; }
 .loader-mark {
   font-family: var(--font-serif);
   font-size: clamp(2.5rem, 9vw, 5rem);
@@ -164,9 +164,8 @@
 }
 @keyframes loader-mark {
   0% { opacity: 0; transform: translateY(8px); letter-spacing: 0.04em; }
-  30% { opacity: 1; transform: none; }
-  75% { opacity: 1; letter-spacing: 0.12em; }
-  100% { opacity: 0; letter-spacing: 0.14em; }
+  35% { opacity: 1; transform: none; }
+  100% { opacity: 1; letter-spacing: 0.14em; }
 }
 @keyframes loader-out {
   to { opacity: 0; visibility: hidden; }
@@ -182,22 +181,27 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-/* Hero headline: each word rises and fades in, 80ms apart, starting as the loader lifts. Once the
-   intro has played (.intro-done, set by the layout script), a hero mounted later starts right away. */
+/* Hero headline: hidden until the loader lifts, then each word rises over 1.1s, 160ms apart. A hero
+   mounted later (in-app navigation) finds .loader-done already set and starts right away. */
 .rise-word {
   display: inline-block;
-  animation: rise 700ms var(--ease-lux) both;
-  animation-delay: calc(var(--i) * 80ms + var(--intro-delay, 2000ms));
+  opacity: 0;
 }
-.intro-done .rise-word { --intro-delay: 100ms; }
+.loader-done .rise-word {
+  animation: rise 1100ms var(--ease-lux) both;
+  animation-delay: calc(var(--i) * 160ms + 450ms); /* begins as the loader finishes fading */
+}
 @keyframes rise {
-  from { opacity: 0; transform: translateY(0.45em); }
+  from { opacity: 0; transform: translateY(0.5em); }
+  to { opacity: 1; transform: none; }
 }
 
-/* Slow zoom on the hero card. */
-.slow-zoom { animation: slow-zoom 6s var(--ease-lux) both; }
+/* Slow zoom on the hero card, starting as the loader lifts. */
+.slow-zoom { transform: scale(1.06); }
+.loader-done .slow-zoom { animation: slow-zoom 6s var(--ease-lux) both; }
 @keyframes slow-zoom {
   from { transform: scale(1.06); }
+  to { transform: scale(1); }
 }
 
 /* Fade-up reveal, toggled by the Reveal component's IntersectionObserver. */
@@ -282,8 +286,12 @@
 @media (prefers-reduced-motion: reduce) {
   .loader { display: none; }
   .rise-word,
+  .loader-done .rise-word,
   .slow-zoom,
+  .loader-done .slow-zoom,
   .marquee-track { animation: none; }
+  .rise-word { opacity: 1; }
+  .slow-zoom { transform: none; }
   .reveal { opacity: 1; transform: none; transition: none; }
   .btn-lux,
   .btn-lux .arrow,
