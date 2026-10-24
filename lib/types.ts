@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { FixesRequestSchema, FixSchema, MetricSchema, OtherMetricSchema } from "./schemas";
+import type { AskRequestSchema, FixesRequestSchema, FixSchema, MetricSchema, OtherMetricSchema } from "./schemas";
 
 export type Metric = z.infer<typeof MetricSchema>;
 export type MetricKey = Metric["key"];
@@ -33,6 +33,7 @@ export interface ScoreResponse {
 
 export type Fix = z.infer<typeof FixSchema>;
 export type FixesRequest = z.infer<typeof FixesRequestSchema>;
+export type AskRequest = z.infer<typeof AskRequestSchema>;
 
 /** Response body of POST /api/fixes. */
 export interface FixesResponse {

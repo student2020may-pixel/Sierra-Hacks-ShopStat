@@ -10,7 +10,7 @@ export const STAT_LABELS: Record<MetricKey, { short: string; full: string }> = {
   on_time_delivery: { short: "TIME", full: "On-Time Delivery" },
 };
 
-/** Score a metric gets for just meeting its target (see the scoring rubric in /api/score). */
+/** Score a metric gets for exactly meeting its target (see lib/scoring.ts). */
 export const TARGET_SCORE = 85;
 
 export function letterGrade(score: number): string {

@@ -24,7 +24,7 @@
       "shopValue": 11.8,
       "target": 7.5,
       "higherIsBetter": false,
-      "score": 35,
+      "score": 13,
       "explanation": "Cars are staying in your shop about 4 days longer than the insurer wants, which is the biggest drag on your rating."
     },
     {
@@ -34,7 +34,7 @@
       "shopValue": 87,
       "target": 90,
       "higherIsBetter": true,
-      "score": 78,
+      "score": 79,
       "explanation": "Customers are mostly happy, but you're a few points short — late deliveries are a common reason scores slip."
     },
     {
@@ -44,7 +44,7 @@
       "shopValue": 3410,
       "target": 3550,
       "higherIsBetter": false,
-      "score": 92,
+      "score": 88,
       "explanation": "Your average repair costs less than the insurer's target, so this metric is helping you."
     },
     {
@@ -54,7 +54,7 @@
       "shopValue": 33,
       "target": 28,
       "higherIsBetter": false,
-      "score": 64,
+      "score": 58,
       "explanation": "One in three jobs needs a revised estimate, a bit above target — more thorough teardowns up front would help."
     },
     {
@@ -64,7 +64,7 @@
       "shopValue": 41,
       "target": 38,
       "higherIsBetter": true,
-      "score": 90,
+      "score": 91,
       "explanation": "You use aftermarket and recycled parts slightly more than required, which the insurer likes."
     },
     {
@@ -74,7 +74,7 @@
       "shopValue": 69,
       "target": 92,
       "higherIsBetter": true,
-      "score": 38,
+      "score": 48,
       "explanation": "Fewer than 7 in 10 cars go back on the promised date, far below the 92% target."
     }
   ]

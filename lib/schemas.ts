@@ -43,9 +43,21 @@ export const OtherMetricSchema = z.object({
   note: z.string(),
 });
 
+/**
+ * What the model extracts for each of the six metrics. It only reads numbers and writes the
+ * explanation; the 0–100 score is computed in code (lib/scoring.ts).
+ */
+export const ExtractedMetricSchema = z.object({
+  key: z.enum(METRIC_KEYS),
+  /** null when the metric isn't on the scorecard. */
+  shopValue: z.number().nullable(),
+  target: z.number().nullable(),
+  explanation: z.string(),
+});
+
 /** What the model must return for /api/score. */
 export const ScoreOutputSchema = z.object({
-  metrics: z.array(MetricSchema),
+  metrics: z.array(ExtractedMetricSchema),
   other_metrics: z.array(OtherMetricSchema),
 });
 
@@ -70,6 +82,19 @@ const FlaggedJobSchema = z.object({
   expectedDays: z.number(),
   extraDays: z.number(),
   supplements: z.number(),
+});
+
+/** Body of POST /api/ask: the question plus only this shop's own data. */
+export const AskRequestSchema = z.object({
+  question: z.string().trim().min(1).max(300),
+  metrics: z.array(MetricSchema).max(6),
+  /** The worst slow jobs (a big file can flag hundreds; the page sends the top 50). */
+  flagged: z.array(FlaggedJobSchema).max(50),
+  /** How many jobs were flagged in total, which can be more than flagged.length. */
+  flaggedCount: z.number(),
+  totalExtraDays: z.number(),
+  jobCount: z.number(),
+  fixes: z.array(FixSchema).max(3),
 });
 
 /** Body of POST /api/fixes. */

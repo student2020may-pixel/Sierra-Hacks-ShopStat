@@ -3,7 +3,7 @@ import { isScored, type Metric } from "./types";
 
 export type Status = "meets" | "close" | "below" | "missing";
 
-/** Scores 65–84 mean "slightly below target" in the /api/score rubric. */
+/** A score of 65+ while missing target means a miss of about 13% or less (see lib/scoring.ts). */
 const CLOSE_SCORE = 65;
 
 export function metricStatus(m: Metric): Status {
