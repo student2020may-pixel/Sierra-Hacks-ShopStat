@@ -37,16 +37,18 @@ export default function ScorecardStep() {
   const [result, setResult] = useState<ScoreResponse | null>(null);
   /** Name of the scorecard behind `result`, so it still shows after Back from step 2. */
   const [resultName, setResultName] = useState<string | null>(null);
+  /** A sample (or fallback) result from an earlier visit: counts as done, but isn't shown until scored again. */
+  const [savedSample, setSavedSample] = useState(false);
   // Ignores responses from a request the user has since replaced (picked a new file mid-upload).
   const requestId = useRef(0);
 
   // Coming back to this step: restore the last result instead of starting over.
   useEffect(() => {
     const saved = loadValid(SCORE_KEY, isScoreResult) as ScoreResponse | null;
-    if (saved) {
-      setResult({ ...saved, other_metrics: Array.isArray(saved.other_metrics) ? saved.other_metrics : [] });
-      setResultName(load<string>(SCORE_FILE_KEY));
-    }
+    if (!saved) return;
+    setResultName(load<string>(SCORE_FILE_KEY));
+    if (saved.source === "sample") setSavedSample(true);
+    else setResult({ ...saved, other_metrics: Array.isArray(saved.other_metrics) ? saved.other_metrics : [] });
   }, []);
 
   function pick(f: File | undefined) {
@@ -56,6 +58,8 @@ export default function ScorecardStep() {
     setLoading(false);
     setError(null);
     setResult(null);
+    setResultName(null);
+    setSavedSample(false);
   }
 
   function show(data: ScoreResponse, name: string) {
@@ -241,7 +245,7 @@ export default function ScorecardStep() {
         next={{
           href: "/assessment/jobs",
           label: "Next",
-          ready: result !== null && !loading,
+          ready: (result !== null || savedSample) && !loading,
           hint: "Score a scorecard or try the sample to continue.",
         }}
       />
