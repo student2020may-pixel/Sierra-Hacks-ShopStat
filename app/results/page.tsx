@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import Progress from "@/components/assessment/Progress";
 import AskShopStats from "@/components/AskShopStats";
+import GradeExplainer from "@/components/GradeExplainer";
 import KpiTable from "@/components/KpiTable";
 import Notice from "@/components/Notice";
 import StatSheet from "@/components/StatSheet";
@@ -282,6 +283,9 @@ export default function ResultsPage() {
         </p>
         <div className="mt-4">
           <StatSheet metrics={inputs.metrics} />
+        </div>
+        <div className="mt-4">
+          <GradeExplainer metrics={inputs.metrics} />
         </div>
       </section>
 
