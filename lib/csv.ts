@@ -10,6 +10,14 @@ const COLUMNS: Record<keyof Job, string[]> = {
   dateOut: ["date_out", "dateout", "out_date", "delivered"],
 };
 const REQUIRED: (keyof Job)[] = ["jobId", "laborHours", "daysInShop"];
+const DAY_MS = 864e5;
+
+/** Whole days between two dates, or NaN if either can't be read. */
+function daysBetween(dateIn: string, dateOut: string): number {
+  const start = Date.parse(dateIn);
+  const end = Date.parse(dateOut);
+  return Number.isNaN(start) || Number.isNaN(end) ? NaN : Math.round((end - start) / DAY_MS);
+}
 /** Keeps the outlier math and the chart responsive; real quarterly exports are far smaller. */
 export const MAX_ROWS = 5000;
 /** A single repair beyond these is a typo or a unit mix-up (minutes as hours), and would wreck the chart's scale. */
@@ -77,7 +85,9 @@ export function parseJobsCsv(text: string): ParseResult {
     (Object.keys(COLUMNS) as (keyof Job)[]).map((k) => [k, headers.findIndex((h) => COLUMNS[k].includes(h))]),
   ) as Record<keyof Job, number>;
 
-  const missing = REQUIRED.filter((k) => idx[k] < 0);
+  // Many shop systems export dates in and out instead of a days column; work the days out from those.
+  const daysFromDates = idx.daysInShop < 0 && idx.dateIn >= 0 && idx.dateOut >= 0;
+  const missing = REQUIRED.filter((k) => idx[k] < 0 && !(k === "daysInShop" && daysFromDates));
   if (missing.length === REQUIRED.length) {
     return {
       ok: false,
@@ -85,7 +95,8 @@ export function parseJobsCsv(text: string): ParseResult {
     };
   }
   if (missing.length) {
-    return { ok: false, error: `That file is missing a column for ${missing.map((k) => COLUMNS[k][0]).join(" and ")}.` };
+    const names = missing.map((k) => (k === "daysInShop" ? "days_in_shop (or date_in and date_out)" : COLUMNS[k][0]));
+    return { ok: false, error: `That file is missing a column for ${names.join(" and ")}.` };
   }
 
   // "12,5" means 12.5 in semicolon-delimited files; elsewhere strip thousands separators ("1,284").
@@ -97,7 +108,7 @@ export function parseJobsCsv(text: string): ParseResult {
   for (const cells of rows.slice(1)) {
     const cell = (k: keyof Job) => (idx[k] >= 0 ? (cells[idx[k]] ?? "") : "");
     const laborHours = toNumber(cell("laborHours"));
-    const daysInShop = toNumber(cell("daysInShop"));
+    const daysInShop = daysFromDates ? daysBetween(cell("dateIn"), cell("dateOut")) : toNumber(cell("daysInShop"));
     if (
       !cell("jobId") ||
       !(laborHours > 0 && laborHours <= MAX_LABOR_HOURS) ||

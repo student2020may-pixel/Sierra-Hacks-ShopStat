@@ -1,15 +1,17 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import ManualJobs from "@/components/assessment/ManualJobs";
+import Progress from "@/components/assessment/Progress";
+import StepNav from "@/components/assessment/StepNav";
 import Notice from "@/components/Notice";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import { detectOutliers, type AnomalyResult, type Job } from "@/lib/anomaly";
 import { parseJobsCsv } from "@/lib/csv";
 import { formatCount } from "@/lib/format";
-import { JOBS_KEY, save } from "@/lib/storage";
+import { isJobsResult, JOBS_KEY, JOBS_SOURCE_KEY, load, loadValid, save } from "@/lib/storage";
 
 // Recharts measures the DOM, so render it on the client only.
 const JobsScatter = dynamic(() => import("@/components/JobsScatter"), {
@@ -36,12 +38,22 @@ function summary(result: AnomalyResult): string {
 
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
 
-export default function JobsPage() {
+export default function JobsStep() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnomalyResult | null>(null);
   const [source, setSource] = useState<string | null>(null);
   const [skipped, setSkipped] = useState(0);
+  const [manual, setManual] = useState(false);
+
+  // Coming back to this step: restore the last result instead of starting over.
+  useEffect(() => {
+    const saved = loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null;
+    if (saved) {
+      setResult(saved);
+      setSource(load<string>(JOBS_SOURCE_KEY) ?? "your last upload");
+    }
+  }, []);
 
   function analyze(text: string, label: string) {
     const parsed = parseJobsCsv(text);
@@ -56,6 +68,7 @@ export default function JobsPage() {
       setSkipped(parsed.skipped);
       setError(null);
       save(JOBS_KEY, r);
+      save(JOBS_SOURCE_KEY, label);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong analyzing those jobs.");
     }
@@ -95,11 +108,16 @@ export default function JobsPage() {
   }
 
   return (
-    <main className="px-safe pb-safe mx-auto max-w-5xl pt-10">
-      <h1 className="text-3xl font-bold tracking-tight text-primary">Find the jobs that dragged on</h1>
+    <main className="px-safe mx-auto max-w-5xl pt-8">
+      <Progress step={2} />
+      <h1 className="mt-6 text-3xl font-bold tracking-tight text-primary">Find the jobs that dragged on</h1>
       <p className="mt-2 text-slate-600">
         Upload a CSV of recent repair jobs. We compare each job&apos;s days in the shop to what its labor hours
         predict and flag the ones that took far longer.
+      </p>
+      <p className="mt-2 text-sm text-slate-500">
+        Export last quarter&apos;s repair orders from your shop management software as a CSV, with job ID, labor hours,
+        and dates in and out.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -125,8 +143,17 @@ export default function JobsPage() {
         {loading && <Spinner label="Loading sample jobs…" />}
       </div>
       <p className="mt-2 text-xs text-slate-500">
-        Needs columns: job_id, estimate_labor_hours, days_in_shop (supplements, date_in, date_out optional).
+        Columns: job_id, estimate_labor_hours, and days_in_shop or date_in and date_out (supplements optional).
       </p>
+      <button
+        type="button"
+        onClick={() => setManual((m) => !m)}
+        aria-expanded={manual}
+        className="pressable mt-3 text-sm font-semibold text-primary"
+      >
+        {manual ? "Hide hand entry" : "No export? Enter jobs by hand"}
+      </button>
+      {manual && <ManualJobs onSubmit={(csv) => analyze(csv, "jobs entered by hand")} />}
 
       {error && (
         <div className="mt-6 animate-enter">
@@ -204,13 +231,13 @@ export default function JobsPage() {
             </div>
           )}
 
-          <div className="flex justify-end">
-            <Link href="/results" className="pressable py-2 text-sm font-semibold text-primary hover:text-primary-hover">
-              Next: see your results →
-            </Link>
-          </div>
         </section>
       )}
+
+      <StepNav
+        back="/assessment/scorecard"
+        next={{ href: "/results", label: "See results", ready: result !== null && !loading, hint: "Add your jobs or use the sample to continue." }}
+      />
     </main>
   );
 }

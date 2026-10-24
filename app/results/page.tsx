@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import Progress from "@/components/assessment/Progress";
 import AskShopStats from "@/components/AskShopStats";
 import Notice from "@/components/Notice";
 import StatSheet from "@/components/StatSheet";
@@ -97,13 +98,13 @@ function SampleNote({ sampleScores, sampleJobs }: Pick<Inputs, "sampleScores" | 
   const links = (
     <>
       {sampleScores && (
-        <Link href="/upload" className="pressable inline-block font-semibold underline">
+        <Link href="/assessment/scorecard" className="pressable inline-block font-semibold underline">
           Upload your scorecard
         </Link>
       )}
       {sampleScores && sampleJobs && " · "}
       {sampleJobs && (
-        <Link href="/jobs" className="pressable inline-block font-semibold underline">
+        <Link href="/assessment/jobs" className="pressable inline-block font-semibold underline">
           Check your jobs
         </Link>
       )}
@@ -252,7 +253,13 @@ export default function ResultsPage() {
   const missingCount = inputs.metrics.filter((m) => !isScored(m)).length;
 
   return (
-    <main className="px-safe pb-safe mx-auto max-w-5xl space-y-8 pt-10">
+    <main className="px-safe pb-safe mx-auto max-w-5xl space-y-8 pt-8">
+      <div className="space-y-3">
+        <Progress step={3} />
+        <Link href="/assessment/jobs" className="pressable inline-block text-sm font-semibold text-primary hover:text-primary-hover">
+          ← Back to jobs
+        </Link>
+      </div>
       <div className="animate-enter empty:hidden">
         <SampleNote sampleScores={inputs.sampleScores} sampleJobs={inputs.sampleJobs} />
       </div>

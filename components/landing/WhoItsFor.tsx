@@ -11,10 +11,10 @@ export default function WhoItsFor() {
           and school.
         </p>
         <Link
-          href="/upload"
+          href="/assessment/scorecard"
           className="pressable mt-9 inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-7 py-4 text-base font-semibold text-ink hover:bg-white"
         >
-          Upload your scorecard <span aria-hidden>→</span>
+          Start shop assessment <span aria-hidden>→</span>
         </Link>
       </div>
     </section>
