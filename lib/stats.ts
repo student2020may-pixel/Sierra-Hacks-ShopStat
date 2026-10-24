@@ -1,13 +1,13 @@
 import { isScored, type Metric, type MetricKey, type ScoredMetric } from "./types";
 
-/** Game-style stat names for the "shop stat sheet" radar. */
-export const STAT_LABELS: Record<MetricKey, { short: string; full: string }> = {
-  cycle_time: { short: "SPD", full: "Cycle Time" },
-  customer_satisfaction: { short: "HAP", full: "Customer Satisfaction" },
-  avg_repair_cost: { short: "COST", full: "Repair Cost" },
-  supplement_rate: { short: "SUPP", full: "Supplement Rate" },
-  alt_parts_usage: { short: "PART", full: "Alternate Parts" },
-  on_time_delivery: { short: "TIME", full: "On-Time Delivery" },
+/** Stat names for the "shop stat sheet" radar. */
+export const STAT_LABELS: Record<MetricKey, { full: string }> = {
+  cycle_time: { full: "Cycle Time" },
+  customer_satisfaction: { full: "Customer Satisfaction" },
+  avg_repair_cost: { full: "Repair Cost" },
+  supplement_rate: { full: "Supplement Rate" },
+  alt_parts_usage: { full: "Alternate Parts" },
+  on_time_delivery: { full: "On-Time Delivery" },
 };
 
 /** Score a metric gets for exactly meeting its target (see lib/scoring.ts). */
@@ -55,6 +55,6 @@ export function weakestStat(metrics: Metric[]): { metric: ScoredMetric; text: st
   if (scored.length === 0) return null;
   const weakest = scored.reduce((a, b) => (b.score < a.score ? b : a));
   const meets = weakest.higherIsBetter ? weakest.shopValue >= weakest.target : weakest.shopValue <= weakest.target;
-  const label = STAT_LABELS[weakest.key].short;
+  const label = STAT_LABELS[weakest.key].full;
   return { metric: weakest, text: `${label} — ${meets ? "still meets the target" : gapPhrase(weakest)}.` };
 }

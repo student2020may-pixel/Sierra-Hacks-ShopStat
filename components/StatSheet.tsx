@@ -3,10 +3,10 @@ import { letterGrade, shopLevel, STAT_LABELS, TARGET_SCORE, weakestStat } from "
 import { isScored, type Metric } from "@/lib/types";
 
 // Chart geometry in viewBox units. The SVG scales to its container, so these stay fixed.
-const W = 420;
-const H = 372;
+const W = 500;
+const H = 420;
 const CX = W / 2;
-const CY = 188;
+const CY = 212;
 const R = 108; // radius of the 100-point ring
 const LABEL_R = R + 22;
 const MIN_AXES = 3; // a radar needs three axes to be a shape
@@ -43,8 +43,8 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
       {weakest && (
         <p className="px-4 pt-3 text-sm text-white/80 sm:px-5">
           <span className="font-semibold text-white">Weakest stat:</span>{" "}
-          <span className="font-mono font-bold text-danger-soft">{STAT_LABELS[weakest.metric.key].short}</span>
-          {weakest.text.slice(STAT_LABELS[weakest.metric.key].short.length)}
+          <span className="font-bold text-danger-soft">{STAT_LABELS[weakest.metric.key].full}</span>
+          {weakest.text.slice(STAT_LABELS[weakest.metric.key].full.length)}
         </p>
       )}
 
@@ -57,7 +57,7 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
         <>
           <svg
             viewBox={`0 0 ${W} ${H}`}
-            className="mx-auto block h-auto w-full max-w-[480px]"
+            className="mx-auto block h-auto w-full max-w-[560px]"
             role="img"
             aria-label={`Stat sheet: ${scored.map((m) => `${STAT_LABELS[m.key].full} ${m.score}`).join(", ")}. Target is ${TARGET_SCORE} on every stat.`}
           >
@@ -111,25 +111,34 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
               })}
             </g>
 
-            {/* Labels: game abbreviation and score, with the full name underneath. */}
+            {/* Labels: score over the full name. Stats short of target get bigger type so they stand out. */}
             {scored.map((m, i) => {
               const [x, y] = at(i, LABEL_R);
               const cos = Math.cos(angle(i));
               const sin = Math.sin(angle(i));
               const anchor = Math.abs(cos) < 0.2 ? "middle" : cos > 0 ? "start" : "end";
               const lines = nameLines(STAT_LABELS[m.key].full);
-              const blockHeight = 18 + lines.length * 14;
-              // Top labels sit above the chart, bottom labels below it, side labels centered on the spoke.
-              const top = sin < -0.5 ? y - blockHeight + 6 : sin > 0.5 ? y + 8 : y - blockHeight / 2 + 6;
               const status = metricStatus(m);
+              const lacking = status !== "meets";
+              const scoreSize = lacking ? 28 : 18;
+              const nameSize = lacking ? 15 : 13;
+              const blockHeight = scoreSize + lines.length * (nameSize + 3);
+              // Top labels sit above the chart, bottom labels below it, side labels centered on the spoke.
+              const top = sin < -0.5 ? y - blockHeight : sin > 0.5 ? y + 4 : y - blockHeight / 2;
               return (
                 <text key={m.key} x={x} y={top} textAnchor={anchor}>
-                  <tspan x={x} dy={10} fontSize={16} fontWeight={700} fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#ffffff">
-                    {STAT_LABELS[m.key].short}{" "}
-                    <tspan fill={status === "meets" ? "var(--color-success)" : status === "close" ? "var(--color-warning)" : "#f87171"}>{m.score}</tspan>
+                  <tspan
+                    x={x}
+                    dy={scoreSize * 0.85}
+                    fontSize={scoreSize}
+                    fontWeight={700}
+                    fontFamily="ui-monospace, SFMono-Regular, Menlo, monospace"
+                    fill={status === "meets" ? "var(--color-success)" : status === "close" ? "var(--color-warning)" : "#f87171"}
+                  >
+                    {m.score}
                   </tspan>
                   {lines.map((line) => (
-                    <tspan key={line} x={x} dy={14} fontSize={12} fill="#94a3b8">
+                    <tspan key={line} x={x} dy={nameSize + 3} fontSize={nameSize} fontWeight={lacking ? 700 : 500} fill={lacking ? "#ffffff" : "#cbd5e1"}>
                       {line}
                     </tspan>
                   ))}
