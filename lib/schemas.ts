@@ -9,20 +9,44 @@ export const METRIC_KEYS = [
   "on_time_delivery",
 ] as const;
 
+export type MetricUnit = "days" | "/100" | "$" | "%";
+
+/** Canonical label, unit, and direction for each of the six metrics. Used in the prompt and to fill gaps. */
+export const METRIC_DEFS: Record<(typeof METRIC_KEYS)[number], { label: string; unit: MetricUnit; higherIsBetter: boolean }> = {
+  cycle_time: { label: "Cycle Time", unit: "days", higherIsBetter: false },
+  customer_satisfaction: { label: "Customer Satisfaction (CSI)", unit: "/100", higherIsBetter: true },
+  avg_repair_cost: { label: "Average Repair Cost", unit: "$", higherIsBetter: false },
+  supplement_rate: { label: "Supplement Rate", unit: "%", higherIsBetter: false },
+  alt_parts_usage: { label: "Alternate Parts Usage", unit: "%", higherIsBetter: true },
+  on_time_delivery: { label: "On-Time Delivery", unit: "%", higherIsBetter: true },
+};
+
 export const MetricSchema = z.object({
   key: z.enum(METRIC_KEYS),
   label: z.string(),
   unit: z.enum(["days", "/100", "$", "%"]),
-  shopValue: z.number(),
-  target: z.number(),
+  /** null when the metric isn't on the uploaded scorecard (shopValue, target, and score are null together). */
+  shopValue: z.number().nullable(),
+  target: z.number().nullable(),
   higherIsBetter: z.boolean(),
-  score: z.number(),
+  score: z.number().nullable(),
   explanation: z.string(),
+});
+
+/** A relevant metric on the scorecard that isn't one of the six (touch time, comeback rate, ...). */
+export const OtherMetricSchema = z.object({
+  label: z.string(),
+  value: z.number().nullable(),
+  target: z.number().nullable(),
+  /** Free text as printed on the scorecard: "%", "$", "hours", "per day", or "". */
+  unit: z.string(),
+  note: z.string(),
 });
 
 /** What the model must return for /api/score. */
 export const ScoreOutputSchema = z.object({
   metrics: z.array(MetricSchema),
+  other_metrics: z.array(OtherMetricSchema),
 });
 
 export const FixSchema = z.object({

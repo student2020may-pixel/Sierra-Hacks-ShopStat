@@ -4,8 +4,8 @@ import type { ResponseInputContent } from "openai/resources/responses/responses"
 import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
 import { getClient, MODEL } from "@/lib/openai";
-import { METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
-import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
+import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
+import { isScored, type Metric, type OtherMetric, type Scorecard, type ScoreResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -26,18 +26,20 @@ function sniffType(bytes: Uint8Array): string | null {
   return null;
 }
 
+const METRIC_LIST = METRIC_KEYS.map((key) => {
+  const d = METRIC_DEFS[key];
+  return `- ${key}: "${d.label}", unit "${d.unit}", ${d.higherIsBetter ? "higher" : "lower"} is better`;
+}).join("\n");
+
 const SYSTEM_PROMPT = `You read insurer scorecards for auto body shops and explain them to shop owners in plain language.
 
-Extract these six metrics from the uploaded scorecard. Use exactly these keys, labels, units, and directions:
-- cycle_time: "Cycle Time", unit "days", lower is better
-- customer_satisfaction: "Customer Satisfaction (CSI)", unit "/100", higher is better
-- avg_repair_cost: "Average Repair Cost", unit "$", lower is better
-- supplement_rate: "Supplement Rate", unit "%", lower is better
-- alt_parts_usage: "Alternate Parts Usage", unit "%", higher is better
-- on_time_delivery: "On-Time Delivery", unit "%", higher is better
+Look for these six metrics on the uploaded scorecard. Use exactly these keys, labels, units, and directions:
+${METRIC_LIST}
 
 For each metric return the shop's value and the insurer's target as plain numbers (no symbols; 33% → 33, $3,410 → 3410).
 The scorecard may use different names for a metric (e.g. "repair cycle time", "CSI", "severity", "parts utilization") — map them.
+
+If a metric is NOT on the scorecard, do not guess or estimate it: set shopValue, target, and score to null, and set explanation to "Not on this scorecard." If the shop's value is shown but no target is, set target and score to null too.
 
 score (0–100) reflects how the shop is doing against the target:
 - Meets or beats the target: 85–100 (higher the further past target).
@@ -47,12 +49,18 @@ score (0–100) reflects how the shop is doing against the target:
 
 explanation: one short sentence a busy shop owner understands — what the number means and whether it's helping or hurting. No jargon, no metric codes.
 
-Return all six metrics, in the order listed. If a metric truly isn't on the scorecard, make your best estimate from context and say so in its explanation.`;
+Return all six metrics, in the order listed.
+
+other_metrics: any OTHER performance metrics on the scorecard that matter to a body shop and aren't one of the six — for example touch time, comeback/redo rate, labor efficiency, photo estimate accuracy, rental days, total loss rate. For each: label as printed, value and target as plain numbers (null if not shown), unit as printed ("%", "$", "hours", "days", or "" if none), and note: one plain-language sentence on what it means for the shop. Leave out shop details, dates, rankings, and anything that isn't a performance metric. Return an empty array if there are none.`;
+
+/** At most this many "Also found" metrics, so a dense scorecard can't flood the page. */
+const MAX_OTHER_METRICS = 8;
 
 function sample(notice: string): NextResponse<ScoreResponse> {
   return NextResponse.json({
     source: "sample",
     metrics: (scorecardData as Scorecard).metrics,
+    other_metrics: [],
     notice,
   });
 }
@@ -61,11 +69,27 @@ function badRequest(error: string) {
   return NextResponse.json({ error }, { status: 400 });
 }
 
-/** Puts metrics in canonical order and clamps scores; returns null if any metric is missing. */
-function normalize(metrics: Metric[]): Metric[] | null {
-  const ordered = METRIC_KEYS.map((key) => metrics.find((m) => m.key === key));
-  if (ordered.some((m) => !m)) return null;
-  return (ordered as Metric[]).map((m) => ({ ...m, score: Math.round(Math.min(100, Math.max(0, m.score))) }));
+/**
+ * Returns the six metrics in canonical order. A metric the model skipped, or returned with only
+ * some of its numbers, becomes "not on this scorecard" (all three numbers null) — never a guess.
+ */
+function normalize(metrics: Metric[]): Metric[] {
+  return METRIC_KEYS.map((key) => {
+    const m = metrics.find((x) => x.key === key);
+    const d = METRIC_DEFS[key];
+    const complete = m && m.shopValue !== null && m.target !== null && m.score !== null;
+    if (!m || !complete) {
+      return { key, ...d, shopValue: null, target: null, score: null, explanation: "Not on this scorecard." };
+    }
+    return { ...m, ...d, score: Math.round(Math.min(100, Math.max(0, m.score!))) };
+  });
+}
+
+function normalizeOther(others: OtherMetric[]): OtherMetric[] {
+  return others
+    .map((o) => ({ ...o, label: o.label.trim(), unit: o.unit.trim(), note: o.note.trim() }))
+    .filter((o) => o.label && (o.value !== null || o.note))
+    .slice(0, MAX_OTHER_METRICS);
 }
 
 export async function POST(req: Request) {
@@ -101,11 +125,13 @@ export async function POST(req: Request) {
     });
 
     // output_parsed is null when the model refused or the output didn't match the schema.
-    const metrics = response.output_parsed && normalize(response.output_parsed.metrics);
-    if (!metrics) {
-      return sample("The AI couldn't find all six metrics in this file, so we're showing the sample scorecard.");
+    const parsed = response.output_parsed;
+    if (!parsed) return sample("The AI couldn't read this file, so we're showing the sample scorecard.");
+    const metrics = normalize(parsed.metrics);
+    if (!metrics.some(isScored)) {
+      return sample("We couldn't find any of the six scorecard metrics in this file, so we're showing the sample scorecard.");
     }
-    return NextResponse.json<ScoreResponse>({ source: "ai", metrics });
+    return NextResponse.json<ScoreResponse>({ source: "ai", metrics, other_metrics: normalizeOther(parsed.other_metrics) });
   } catch (err) {
     console.error("[api/score] OpenAI call failed:", err);
     if (err instanceof OpenAI.AuthenticationError) {

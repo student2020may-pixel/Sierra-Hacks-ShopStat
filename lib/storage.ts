@@ -30,7 +30,7 @@ export function loadValid<T>(key: string, isValid: (value: unknown) => value is 
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 
 export function isScoreResult(v: unknown): v is { metrics: unknown[] } {
-  return isObject(v) && Array.isArray(v.metrics) && v.metrics.length > 0 && v.metrics.every((m) => isObject(m) && typeof m.score === "number" && typeof m.key === "string");
+  return isObject(v) && Array.isArray(v.metrics) && v.metrics.length > 0 && v.metrics.every((m) => isObject(m) && (typeof m.score === "number" || m.score === null) && typeof m.key === "string");
 }
 
 export function isJobsResult(v: unknown): v is { jobs: unknown[]; flagged: unknown[]; totalExtraDays: number } {

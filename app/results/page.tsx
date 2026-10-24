@@ -12,7 +12,7 @@ import { detectOutliers, type AnomalyResult } from "@/lib/anomaly";
 import { parseJobsCsv } from "@/lib/csv";
 import { formatCount } from "@/lib/format";
 import { isJobsResult, isScoreResult, JOBS_KEY, loadValid, SCORE_KEY } from "@/lib/storage";
-import type { Fix, FixesRequest, FixesResponse, Metric, Scorecard, ScoreResponse } from "@/lib/types";
+import { isScored, type Fix, type FixesRequest, type FixesResponse, type Metric, type Scorecard, type ScoredMetric, type ScoreResponse } from "@/lib/types";
 
 const ScoreRadar = dynamic(() => import("@/components/ScoreRadar"), {
   ssr: false,
@@ -163,7 +163,7 @@ function FixCard({ fix, rank }: { fix: Fix; rank: number }) {
   );
 }
 
-function BeforeAfter({ cycle, fixes }: { cycle: Metric; fixes: Fix[] }) {
+function BeforeAfter({ cycle, fixes }: { cycle: ScoredMetric; fixes: Fix[] }) {
   const current = cycle.shopValue;
   if (!(current > 0)) return null;
   const saved = fixes.reduce((sum, f) => sum + f.daysSaved, 0);
@@ -239,7 +239,9 @@ export default function ResultsPage() {
     );
   }
 
-  const cycle = inputs.metrics.find((m) => m.key === "cycle_time");
+  // Before/after needs a real cycle time; skip it if the scorecard didn't report one.
+  const cycle = inputs.metrics.filter(isScored).find((m) => m.key === "cycle_time");
+  const missingCount = inputs.metrics.filter((m) => !isScored(m)).length;
 
   return (
     <main className="px-safe pb-safe mx-auto max-w-5xl space-y-8 pt-10">
@@ -250,7 +252,11 @@ export default function ResultsPage() {
 
       <section className="animate-enter rounded-xl border border-slate-200 bg-white p-4 shadow-sm [animation-delay:60ms] sm:p-6">
         <h2 className="text-xl font-bold text-primary">Scorecard at a glance</h2>
-        <p className="mt-1 text-sm text-slate-600">Each score is out of 100. Anything inside the dashed line is below target.</p>
+        <p className="mt-1 text-sm text-slate-600">
+          Each score is out of 100. Anything inside the dashed line is below target.
+          {missingCount > 0 &&
+            ` ${missingCount} metric${missingCount === 1 ? " isn't" : "s aren't"} on your scorecard, so ${missingCount === 1 ? "it's" : "they're"} left out.`}
+        </p>
         <ScoreRadar metrics={inputs.metrics} />
       </section>
 

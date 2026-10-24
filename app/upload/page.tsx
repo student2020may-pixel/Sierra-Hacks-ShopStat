@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import MetricCard from "@/components/MetricCard";
 import Notice from "@/components/Notice";
+import OtherMetrics from "@/components/OtherMetrics";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import scorecardData from "@/data/scorecard.json";
@@ -20,6 +21,7 @@ const CLIENT_TIMEOUT_MS = 55_000;
 const sampleResult = (notice: string): ScoreResponse => ({
   source: "sample",
   metrics: (scorecardData as Scorecard).metrics,
+  other_metrics: [],
   notice,
 });
 
@@ -66,7 +68,7 @@ export default function UploadPage() {
       if (res.status === 400 && data?.error) {
         setError(data.error); // Something the user can fix, like the wrong file type.
       } else if (res.ok && Array.isArray(data?.metrics)) {
-        show(data as ScoreResponse);
+        show({ ...data, other_metrics: Array.isArray(data.other_metrics) ? data.other_metrics : [] } as ScoreResponse);
       } else {
         // The host timed out or rejected the request (e.g. an HTML 504/413 page), so keep the demo going.
         show(sampleResult("Scoring took too long or the server had a problem, so we're showing the sample scorecard."));
@@ -172,6 +174,7 @@ export default function UploadPage() {
               </div>
             ))}
           </div>
+          <OtherMetrics metrics={result.other_metrics} />
         </section>
       )}
     </main>

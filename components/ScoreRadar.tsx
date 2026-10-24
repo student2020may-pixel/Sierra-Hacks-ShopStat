@@ -10,7 +10,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from "recharts";
-import type { Metric, MetricKey } from "@/lib/types";
+import { isScored, type Metric, type MetricKey } from "@/lib/types";
 
 const SHORT_LABELS: Record<MetricKey, string> = {
   cycle_time: "Cycle time",
@@ -27,8 +27,21 @@ const TARGET_SCORE = 85;
 const OUTLINE = "var(--color-primary)";
 const FILL = "var(--color-accent)";
 
+/** A radar needs at least three axes to be a shape. */
+const MIN_AXES = 3;
+
 export default function ScoreRadar({ metrics }: { metrics: Metric[] }) {
-  const data = metrics.map((m) => ({ metric: SHORT_LABELS[m.key], score: m.score, target: TARGET_SCORE }));
+  // Metrics that weren't on the scorecard have no score; leave them off rather than plotting a fake 0.
+  const data = metrics.filter(isScored).map((m) => ({ metric: SHORT_LABELS[m.key], score: m.score, target: TARGET_SCORE }));
+
+  if (data.length < MIN_AXES) {
+    return (
+      <p className="py-10 text-center text-sm text-slate-500">
+        Only {data.length} of the six metrics {data.length === 1 ? "was" : "were"} on this scorecard, which isn&apos;t
+        enough to draw a chart. See the scores on the Upload page.
+      </p>
+    );
+  }
 
   // overflow-visible: axis labels like "Satisfaction" may extend past the plot box into the card padding on phones.
   return (

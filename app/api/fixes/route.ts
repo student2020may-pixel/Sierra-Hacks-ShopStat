@@ -13,7 +13,7 @@ const MAX_DAYS_PER_FIX = 5;
 
 const SYSTEM_PROMPT = `You advise auto body shop owners on how to cut repair cycle time (how many days a car stays in the shop).
 
-You'll get the shop's insurer scorecard (six metrics with a 0–100 score each) and the repair jobs that took far longer than their labor hours predicted.
+You'll get the shop's insurer scorecard (up to six metrics with a 0–100 score each) and the repair jobs that took far longer than their labor hours predicted.
 
 Return exactly 3 fixes, most impactful first. Each fix must:
 - title: a short action, 3–7 words, e.g. "Order every part at teardown".
@@ -29,9 +29,10 @@ function sample(notice: string): NextResponse<FixesResponse> {
 
 function describe(input: FixesRequest): string {
   const metrics = input.metrics
-    .map(
-      (m) =>
-        `- ${m.label}: shop ${m.shopValue}${m.unit === "/100" ? "/100" : ` ${m.unit}`}, target ${m.target}, score ${m.score}/100 (${m.higherIsBetter ? "higher" : "lower"} is better)`,
+    .map((m) =>
+      m.shopValue === null || m.target === null || m.score === null
+        ? `- ${m.label}: not on this scorecard (don't base a fix on it)`
+        : `- ${m.label}: shop ${m.shopValue}${m.unit === "/100" ? "/100" : ` ${m.unit}`}, target ${m.target}, score ${m.score}/100 (${m.higherIsBetter ? "higher" : "lower"} is better)`,
     )
     .join("\n");
   const jobs = input.flagged.length

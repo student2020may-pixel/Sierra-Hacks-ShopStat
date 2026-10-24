@@ -1,10 +1,24 @@
 import { formatValue } from "@/lib/format";
 import { metricStatus, STATUS_STYLES } from "@/lib/status";
-import type { Metric } from "@/lib/types";
+import { isScored, type Metric } from "@/lib/types";
 
 export default function MetricCard({ metric }: { metric: Metric }) {
   const status = metricStatus(metric);
   const style = STATUS_STYLES[status];
+
+  if (!isScored(metric)) {
+    return (
+      <div className="flex h-full flex-col rounded-xl border border-dashed border-slate-300 bg-slate-50 p-5">
+        <h3 className="font-semibold [overflow-wrap:anywhere] text-slate-500">{metric.label}</h3>
+        <span className={`mt-1 self-start rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${style.chip}`}>
+          {style.label}
+        </span>
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">
+          Your insurer didn&apos;t report this one, so it isn&apos;t scored or counted in the chart.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-full flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
