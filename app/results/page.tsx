@@ -24,6 +24,8 @@ const scorecard = scorecardData as Scorecard;
 const SHOP_NAME = scorecard.shop.name;
 
 interface Inputs {
+  /** /results?sample=1: always show the fictional sample shop, even if this tab has the user's own data. */
+  forcedSample: boolean;
   metrics: Metric[];
   period: string | null;
   jobs: AnomalyResult | null;
@@ -32,9 +34,10 @@ interface Inputs {
 }
 
 async function loadInputs(): Promise<Inputs> {
+  const forcedSample = new URLSearchParams(window.location.search).get("sample") === "1";
   // Saved results from an older version, or edited by hand, count as "not uploaded" rather than crashing the page.
-  const score = loadValid(SCORE_KEY, isScoreResult) as ScoreResponse | null;
-  let jobs = loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null;
+  const score = forcedSample ? null : (loadValid(SCORE_KEY, isScoreResult) as ScoreResponse | null);
+  let jobs = forcedSample ? null : (loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null);
   const sampleJobs = !jobs;
   if (!jobs) {
     try {
@@ -46,6 +49,7 @@ async function loadInputs(): Promise<Inputs> {
     }
   }
   return {
+    forcedSample,
     metrics: score?.metrics ?? scorecard.metrics,
     period: score ? (score.period ?? null) : scorecard.period,
     jobs,
@@ -263,15 +267,28 @@ export default function ResultsPage() {
 
   return (
     <main className="px-safe pb-safe mx-auto max-w-5xl space-y-8 pt-8">
-      <div className="space-y-3">
-        <Progress step={3} />
-        <Link href="/assessment/jobs" className="pressable inline-block text-sm font-semibold text-primary hover:text-primary-hover">
-          ← Back to jobs
-        </Link>
-      </div>
-      <div className="animate-enter empty:hidden">
-        <SampleNote sampleScores={inputs.sampleScores} sampleJobs={inputs.sampleJobs} />
-      </div>
+      {inputs.forcedSample ? (
+        <div className="animate-enter">
+          <Notice kind="info">
+            This is a sample report for Valley Auto Body, a fictional shop.{" "}
+            <Link href="/assessment/scorecard" className="pressable inline-block font-semibold underline">
+              Start your own assessment
+            </Link>
+          </Notice>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-3">
+            <Progress step={3} />
+            <Link href="/assessment/jobs" className="pressable inline-block text-sm font-semibold text-primary hover:text-primary-hover">
+              ← Back to jobs
+            </Link>
+          </div>
+          <div className="animate-enter empty:hidden">
+            <SampleNote sampleScores={inputs.sampleScores} sampleJobs={inputs.sampleJobs} />
+          </div>
+        </>
+      )}
       <Banner jobs={inputs.jobs} />
 
       <section className="animate-enter rounded-xl border border-slate-200 bg-white p-4 shadow-sm [animation-delay:60ms] sm:p-6">

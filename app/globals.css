@@ -47,6 +47,9 @@
 
 /* Reduced motion keeps the fade (it helps show what changed) but drops the movement. */
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .animate-enter,
   .animate-grow {
     animation-name: enter-fade;
@@ -95,6 +98,7 @@
 
 @layer base {
   html {
+    scroll-behavior: smooth; /* "How it works" link; turned off below for reduced motion */
     -webkit-tap-highlight-color: transparent; /* each control has its own :active state */
     -webkit-text-size-adjust: 100%;
   }
