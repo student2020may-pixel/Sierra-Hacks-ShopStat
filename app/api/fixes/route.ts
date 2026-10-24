@@ -3,6 +3,7 @@ import { zodTextFormat } from "openai/helpers/zod";
 import { NextResponse } from "next/server";
 import sampleFixes from "@/data/sample-fixes.json";
 import { getClient, MODEL } from "@/lib/openai";
+import { clip } from "@/lib/text";
 import { FixesOutputSchema, FixesRequestSchema } from "@/lib/schemas";
 import type { Fix, FixesRequest, FixesResponse } from "@/lib/types";
 
@@ -68,7 +69,9 @@ export async function POST(req: Request) {
     return NextResponse.json<FixesResponse>({
       source: "ai",
       fixes: fixes.slice(0, 3).map((f) => ({
-        ...f,
+        title: clip(f.title, 70),
+        explanation: clip(f.explanation, 260),
+        basedOn: clip(f.basedOn, 120),
         daysSaved: Math.round(Math.min(MAX_DAYS_PER_FIX, Math.max(0, f.daysSaved)) * 10) / 10,
       })),
     });

@@ -4,7 +4,8 @@ import type { ResponseInputContent } from "openai/resources/responses/responses"
 import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
 import { getClient, MODEL } from "@/lib/openai";
-import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
+import { clip } from "@/lib/text";
+import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema, type MetricUnit } from "@/lib/schemas";
 import { isScored, type Metric, type OtherMetric, type Scorecard, type ScoreResponse } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -56,6 +57,18 @@ other_metrics: any OTHER performance metrics on the scorecard that matter to a b
 /** At most this many "Also found" metrics, so a dense scorecard can't flood the page. */
 const MAX_OTHER_METRICS = 8;
 
+/**
+ * Values outside these ranges can't be real (a 142% rate, a 1,284-day cycle time), so they're a
+ * misread and the metric is treated as not on the scorecard rather than scored.
+ */
+const PLAUSIBLE: Record<MetricUnit, [number, number]> = {
+  "%": [0, 100],
+  "/100": [0, 100],
+  days: [0, 365],
+  $: [0, 100_000],
+};
+const plausible = (v: number, unit: MetricUnit) => Number.isFinite(v) && v >= PLAUSIBLE[unit][0] && v <= PLAUSIBLE[unit][1];
+
 function sample(notice: string): NextResponse<ScoreResponse> {
   return NextResponse.json({
     source: "sample",
@@ -77,17 +90,35 @@ function normalize(metrics: Metric[]): Metric[] {
   return METRIC_KEYS.map((key) => {
     const m = metrics.find((x) => x.key === key);
     const d = METRIC_DEFS[key];
-    const complete = m && m.shopValue !== null && m.target !== null && m.score !== null;
-    if (!m || !complete) {
+    const usable =
+      m &&
+      m.shopValue !== null &&
+      m.target !== null &&
+      m.score !== null &&
+      plausible(m.shopValue, d.unit) &&
+      plausible(m.target, d.unit);
+    if (!m || !usable) {
       return { key, ...d, shopValue: null, target: null, score: null, explanation: "Not on this scorecard." };
     }
-    return { ...m, ...d, score: Math.round(Math.min(100, Math.max(0, m.score!))) };
+    return {
+      ...m,
+      ...d,
+      score: Math.round(Math.min(100, Math.max(0, m.score!))),
+      explanation: clip(m.explanation, 240),
+    };
   });
 }
 
 function normalizeOther(others: OtherMetric[]): OtherMetric[] {
   return others
-    .map((o) => ({ ...o, label: o.label.trim(), unit: o.unit.trim(), note: o.note.trim() }))
+    .map((o) => ({
+      ...o,
+      label: clip(o.label, 60),
+      unit: clip(o.unit, 24),
+      note: clip(o.note, 200),
+      value: o.value !== null && Number.isFinite(o.value) ? o.value : null,
+      target: o.target !== null && Number.isFinite(o.target) ? o.target : null,
+    }))
     .filter((o) => o.label && (o.value !== null || o.note))
     .slice(0, MAX_OTHER_METRICS);
 }

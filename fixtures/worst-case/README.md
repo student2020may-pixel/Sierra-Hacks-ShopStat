@@ -10,3 +10,4 @@ Realistic bad files for regression-testing `/jobs` (upload each one on the page)
 | `jobs-one-outlier.csv` | Exactly one flagged job (singular wording) |
 | `jobs-too-few.csv` | Fewer than 5 jobs (friendly error) |
 | `jobs-header-only.csv` | Header row, no jobs (friendly error) |
+| `jobs-extreme-values.csv` | Emoji, CJK, `<script>` and 120-character job IDs; 1,000,000 labor hours, negative and zero days, a blank cell (impossible rows are skipped) |

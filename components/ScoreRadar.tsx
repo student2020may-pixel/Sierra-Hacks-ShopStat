@@ -38,7 +38,7 @@ export default function ScoreRadar({ metrics }: { metrics: Metric[] }) {
     return (
       <p className="py-10 text-center text-sm text-slate-500">
         Only {data.length} of the six metrics {data.length === 1 ? "was" : "were"} on this scorecard, which isn&apos;t
-        enough to draw a chart. See the scores on the Upload page.
+        enough to draw a chart.
       </p>
     );
   }

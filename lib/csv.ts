@@ -12,6 +12,9 @@ const COLUMNS: Record<keyof Job, string[]> = {
 const REQUIRED: (keyof Job)[] = ["jobId", "laborHours", "daysInShop"];
 /** Keeps the outlier math and the chart responsive; real quarterly exports are far smaller. */
 export const MAX_ROWS = 5000;
+/** A single repair beyond these is a typo or a unit mix-up (minutes as hours), and would wreck the chart's scale. */
+const MAX_LABOR_HOURS = 1000;
+const MAX_DAYS_IN_SHOP = 365;
 
 const norm = (h: string) => h.trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 
@@ -95,7 +98,11 @@ export function parseJobsCsv(text: string): ParseResult {
     const cell = (k: keyof Job) => (idx[k] >= 0 ? (cells[idx[k]] ?? "") : "");
     const laborHours = toNumber(cell("laborHours"));
     const daysInShop = toNumber(cell("daysInShop"));
-    if (!cell("jobId") || !(laborHours > 0) || !(daysInShop >= 0) || !Number.isFinite(laborHours + daysInShop)) {
+    if (
+      !cell("jobId") ||
+      !(laborHours > 0 && laborHours <= MAX_LABOR_HOURS) ||
+      !(daysInShop >= 0 && daysInShop <= MAX_DAYS_IN_SHOP)
+    ) {
       skipped++;
       continue;
     }

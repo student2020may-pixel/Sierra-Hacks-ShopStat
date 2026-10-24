@@ -44,29 +44,45 @@ function shortId(id: string, max = 14): string {
 
 type LabelSpot = { side: "left" | "right"; below: boolean };
 
+/** Approximate plot height and label line height in px, used to tell when two labels would overlap. */
+const PLOT_HEIGHT_PX = 210;
+const LABEL_LINE_PX = 14;
+
 /**
  * Label placement per outlier, aligned with the outliers array. Each label takes the first spot
- * that doesn't collide with a label already placed: right, left, then the same sides one line
- * lower. Labels near the chart's right edge never go right. Walks from the largest job down so
- * the left-most of a crowded pair goes left.
+ * that doesn't overlap a label already placed: right, left, then the same sides one line lower.
+ * Labels near the right edge never go right, near the left edge (the y-axis) never left. With no
+ * free spot the label is skipped; the table below lists every job. Walks from the largest job
+ * down so the left-most of a crowded pair goes left.
  */
-function labelSpots(outliers: ScoredJob[], maxHours: number, maxDays: number): LabelSpot[] {
-  const spots: LabelSpot[] = new Array(outliers.length);
+function labelSpots(outliers: ScoredJob[], maxHours: number, maxDays: number): (LabelSpot | null)[] {
+  const spots: (LabelSpot | null)[] = new Array(outliers.length);
   const order = outliers.map((_, i) => i).sort((a, b) => outliers[b].laborHours - outliers[a].laborHours);
-  const near = (a: ScoredJob, b: ScoredJob) =>
-    Math.abs(a.laborHours - b.laborHours) < maxHours * 0.3 && Math.abs(a.daysInShop - b.daysInShop) < maxDays * 0.08;
+  const labelY = (job: ScoredJob, spot: LabelSpot) =>
+    (-job.daysInShop * PLOT_HEIGHT_PX) / maxDays + (spot.below ? LABEL_LINE_PX : 0);
   order.forEach((idx, n) => {
     const job = outliers[idx];
-    const nearEdge = job.laborHours > maxHours * 0.7;
-    const candidates: LabelSpot[] = [
-      { side: "right", below: false },
-      { side: "left", below: false },
-      { side: "left", below: true },
-      { side: "right", below: true },
-    ].filter((c) => !(nearEdge && c.side === "right")) as LabelSpot[];
-    const placed = order.slice(0, n).filter((o) => near(outliers[o], job));
-    spots[idx] =
-      candidates.find((c) => !placed.some((o) => spots[o].side === c.side && spots[o].below === c.below)) ?? candidates[0];
+    const nearRight = job.laborHours > maxHours * 0.7;
+    const nearLeft = job.laborHours < maxHours * 0.4;
+    const candidates = (
+      [
+        { side: "right", below: false },
+        { side: "left", below: false },
+        { side: "left", below: true },
+        { side: "right", below: true },
+      ] as LabelSpot[]
+    ).filter((c) => !(nearRight && c.side === "right") && !(nearLeft && c.side === "left"));
+    const overlaps = (c: LabelSpot) =>
+      order.slice(0, n).some((o) => {
+        const other = spots[o];
+        return (
+          other !== null &&
+          other.side === c.side &&
+          Math.abs(outliers[o].laborHours - job.laborHours) < maxHours * 0.3 &&
+          Math.abs(labelY(outliers[o], other) - labelY(job, c)) < LABEL_LINE_PX - 1
+        );
+      });
+    spots[idx] = candidates.find((c) => !overlaps(c)) ?? null;
   });
   return spots;
 }
@@ -75,7 +91,7 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
   const normal = result.jobs.filter((j) => !j.isOutlier);
   const outliers = result.jobs.filter((j) => j.isOutlier);
   const maxHours = Math.ceil(Math.max(...result.jobs.map((j) => j.laborHours)) / 5) * 5;
-  const maxDays = Math.max(...result.jobs.map((j) => j.daysInShop), 1);
+  const maxDays = Math.max(...result.jobs.map((j) => j.daysInShop), 1) * 1.05;
   const spots = labelSpots(outliers, maxHours, maxDays);
   // Past a few dozen outliers, labels turn into noise; the table below lists them all.
   const showLabels = outliers.length <= 12;
@@ -125,7 +141,8 @@ export default function JobsScatter({ result }: { result: AnomalyResult }) {
             {showLabels && <LabelList
               dataKey="jobId"
               content={({ x, y, value, index }) => {
-                const spot = spots[index ?? 0] ?? { side: "right", below: false };
+                const spot = spots[index ?? 0];
+                if (!spot) return null;
                 const left = spot.side === "left";
                 return (
                   <text

@@ -31,78 +31,79 @@ export default function MockScorecardPage() {
   const below = metrics.filter((m) => !meetsTarget(m));
 
   return (
-    <main className="min-h-screen bg-stone-200 px-4 py-10 print:bg-white print:p-0">
-      <article className="mx-auto max-w-[850px] bg-white font-serif text-stone-900 shadow-xl print:shadow-none">
+    <main className="min-h-svh bg-slate-200 px-3 py-6 sm:px-4 sm:py-10 print:bg-white print:p-0">
+      <article className="mx-auto max-w-[850px] bg-white font-serif text-slate-900 shadow-xl print:shadow-none">
         {/* Letterhead */}
-        <header className="flex items-center justify-between border-b-4 border-[#1f3a5f] px-10 pt-8 pb-5">
+        <header className="flex flex-wrap items-center justify-between gap-4 border-b-4 border-primary px-5 pt-6 pb-5 sm:px-10 sm:pt-8">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-sm bg-[#1f3a5f] font-sans text-xl font-black text-white">
+            <div className="flex h-12 w-12 items-center justify-center rounded-sm shrink-0 bg-primary font-sans text-xl font-black text-white">
               GM
             </div>
             <div>
-              <p className="font-sans text-xl font-bold tracking-wide text-[#1f3a5f]">{insurer.name.toUpperCase()}</p>
-              <p className="font-sans text-xs tracking-widest text-stone-500 uppercase">
+              <p className="font-sans text-xl font-bold tracking-wide text-primary">{insurer.name.toUpperCase()}</p>
+              <p className="font-sans text-xs tracking-widest text-slate-500 uppercase">
                 Claims Operations · {insurer.program}
               </p>
             </div>
           </div>
-          <div className="text-right font-sans text-xs text-stone-500">
+          <div className="font-sans text-xs text-slate-500 sm:text-right">
             <p>Report No. GM-DRP-26Q3-40217</p>
             <p>Issued {new Date(scorecard.issuedOn + "T12:00:00").toLocaleDateString("en-US", { dateStyle: "long" })}</p>
-            <p className="mt-1 font-semibold text-red-700">CONFIDENTIAL</p>
+            <p className="mt-1 font-semibold text-danger">CONFIDENTIAL</p>
           </div>
         </header>
 
-        <section className="px-10 pt-6">
+        <section className="px-5 pt-6 sm:px-10">
           <h1 className="text-center text-2xl font-bold tracking-tight">Repair Facility Performance Scorecard</h1>
-          <p className="mt-1 text-center font-sans text-sm text-stone-600">Reporting Period: {scorecard.period}</p>
+          <p className="mt-1 text-center font-sans text-sm text-slate-600">Reporting Period: {scorecard.period}</p>
 
           {/* Shop details + overall grade */}
-          <div className="mt-6 grid grid-cols-[1fr_auto] gap-6 border border-stone-300">
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-2 p-4 font-sans text-sm">
+          <div className="mt-6 grid border border-slate-300 sm:grid-cols-[1fr_auto] sm:gap-6">
+            <dl className="grid grid-cols-2 gap-x-4 gap-y-2 p-4 font-sans text-sm sm:gap-x-6">
               <div>
-                <dt className="text-xs text-stone-500 uppercase">Facility</dt>
+                <dt className="text-xs text-slate-500 uppercase">Facility</dt>
                 <dd className="font-semibold">{shop.name}</dd>
               </div>
               <div>
-                <dt className="text-xs text-stone-500 uppercase">Facility ID</dt>
+                <dt className="text-xs text-slate-500 uppercase">Facility ID</dt>
                 <dd className="font-semibold">{shop.shopId}</dd>
               </div>
               <div>
-                <dt className="text-xs text-stone-500 uppercase">Address</dt>
+                <dt className="text-xs text-slate-500 uppercase">Address</dt>
                 <dd>{shop.address}</dd>
               </div>
               <div>
-                <dt className="text-xs text-stone-500 uppercase">Market</dt>
+                <dt className="text-xs text-slate-500 uppercase">Market</dt>
                 <dd>{shop.region}</dd>
               </div>
               <div>
-                <dt className="text-xs text-stone-500 uppercase">Repairs Reviewed</dt>
+                <dt className="text-xs text-slate-500 uppercase">Repairs Reviewed</dt>
                 <dd>{scorecard.repairsReviewed}</dd>
               </div>
               <div>
-                <dt className="text-xs text-stone-500 uppercase">Market Rank</dt>
+                <dt className="text-xs text-slate-500 uppercase">Market Rank</dt>
                 <dd>
                   {scorecard.regionalRank.rank} of {scorecard.regionalRank.of}
                 </dd>
               </div>
             </dl>
-            <div className="flex w-40 flex-col items-center justify-center border-l border-stone-300 bg-stone-50 p-4">
-              <p className="font-sans text-xs tracking-wider text-stone-500 uppercase">Overall</p>
-              <p className="text-6xl leading-none font-bold text-[#1f3a5f]">{letterGrade(overall)}</p>
-              <p className="mt-1 font-sans text-sm text-stone-600">{overall} / 100</p>
+            <div className="flex flex-col items-center justify-center border-t border-slate-300 bg-slate-50 p-4 sm:w-40 sm:border-t-0 sm:border-l">
+              <p className="font-sans text-xs tracking-wider text-slate-500 uppercase">Overall</p>
+              <p className="text-6xl leading-none font-bold text-primary">{letterGrade(overall)}</p>
+              <p className="mt-1 font-sans text-sm text-slate-600">{overall} / 100</p>
             </div>
           </div>
         </section>
 
         {/* Metrics table */}
-        <section className="px-10 pt-6">
-          <h2 className="border-b border-stone-300 pb-1 font-sans text-sm font-bold tracking-wider text-[#1f3a5f] uppercase">
+        <section className="px-5 pt-6 sm:px-10">
+          <h2 className="border-b border-slate-300 pb-1 font-sans text-sm font-bold tracking-wider text-primary uppercase">
             Key Performance Indicators
           </h2>
-          <table className="mt-2 w-full font-sans text-sm">
+          <div className="mt-2 overflow-x-auto">
+          <table className="w-full min-w-[520px] font-sans text-sm">
             <thead>
-              <tr className="bg-[#1f3a5f] text-left text-xs text-white uppercase">
+              <tr className="bg-primary text-left text-xs text-white uppercase">
                 <th className="px-3 py-2 font-semibold">Metric</th>
                 <th className="px-3 py-2 text-right font-semibold">Facility</th>
                 <th className="px-3 py-2 text-right font-semibold">Program Target</th>
@@ -114,28 +115,28 @@ export default function MockScorecardPage() {
               {metrics.map((m, i) => {
                 const ok = meetsTarget(m);
                 return (
-                  <tr key={m.key} className={i % 2 ? "bg-stone-50" : ""}>
-                    <td className="border-b border-stone-200 px-3 py-2.5">
+                  <tr key={m.key} className={i % 2 ? "bg-slate-50" : ""}>
+                    <td className="border-b border-slate-200 px-3 py-2.5">
                       <span className="font-medium">{m.label}</span>
-                      <span className="block text-xs text-stone-500">
+                      <span className="block text-xs text-slate-500">
                         {m.higherIsBetter ? "Higher is better" : "Lower is better"}
                       </span>
                     </td>
-                    <td className="border-b border-stone-200 px-3 py-2.5 text-right font-semibold tabular-nums">
+                    <td className="border-b border-slate-200 px-3 py-2.5 text-right font-semibold whitespace-nowrap tabular-nums">
                       {formatValue(m.shopValue, m.unit)}
                     </td>
-                    <td className="border-b border-stone-200 px-3 py-2.5 text-right tabular-nums">
+                    <td className="border-b border-slate-200 px-3 py-2.5 text-right whitespace-nowrap tabular-nums">
                       {formatValue(m.target, m.unit)}
                     </td>
                     <td
-                      className={`border-b border-stone-200 px-3 py-2.5 text-right tabular-nums ${ok ? "text-stone-600" : "font-semibold text-red-700"}`}
+                      className={`border-b border-slate-200 px-3 py-2.5 text-right tabular-nums ${ok ? "text-slate-600" : "font-semibold text-danger"}`}
                     >
                       {variance(m.shopValue, m.target, m.unit)}
                     </td>
-                    <td className="border-b border-stone-200 px-3 py-2.5 text-center">
+                    <td className="border-b border-slate-200 px-3 py-2.5 text-center">
                       <span
                         className={`inline-block rounded-sm px-2 py-0.5 text-xs font-bold ${
-                          ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"
+                          ok ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
                         }`}
                       >
                         {ok ? "MEETS" : "BELOW"}
@@ -146,11 +147,12 @@ export default function MockScorecardPage() {
               })}
             </tbody>
           </table>
+          </div>
         </section>
 
         {/* Reviewer notes */}
-        <section className="px-10 pt-6">
-          <h2 className="border-b border-stone-300 pb-1 font-sans text-sm font-bold tracking-wider text-[#1f3a5f] uppercase">
+        <section className="px-5 pt-6 sm:px-10">
+          <h2 className="border-b border-slate-300 pb-1 font-sans text-sm font-bold tracking-wider text-primary uppercase">
             Program Reviewer Comments
           </h2>
           <p className="mt-2 text-sm leading-relaxed">
@@ -162,12 +164,12 @@ export default function MockScorecardPage() {
           </p>
         </section>
 
-        <footer className="mt-8 flex items-end justify-between border-t border-stone-300 px-10 py-6 font-sans text-xs text-stone-500">
+        <footer className="mt-8 flex flex-wrap items-end justify-between gap-4 border-t border-slate-300 px-5 py-6 font-sans text-xs text-slate-500 sm:px-10">
           <div>
-            <p className="font-serif text-base text-stone-800 italic">R. Delgado</p>
+            <p className="font-serif text-base text-slate-800 italic">R. Delgado</p>
             <p>Regional DRP Manager, Central Valley</p>
           </div>
-          <p className="max-w-xs text-right">
+          <p className="max-w-xs sm:text-right">
             Metrics calculated from closed claims during the reporting period. Fictional document for demonstration
             purposes only.
           </p>

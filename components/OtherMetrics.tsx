@@ -18,7 +18,7 @@ export default function OtherMetrics({ metrics }: { metrics: OtherMetric[] }) {
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
               <p className="min-w-0 font-semibold [overflow-wrap:anywhere] text-ink">{m.label}</p>
               {m.value !== null && (
-                <p className="shrink-0 text-slate-700 tabular-nums">
+                <p className="min-w-0 [overflow-wrap:anywhere] text-slate-700 tabular-nums">
                   <span className="font-semibold text-ink">{formatOther(m.value, m.unit)}</span>
                   {m.target !== null && <span className="text-slate-500"> · target {formatOther(m.target, m.unit)}</span>}
                 </p>

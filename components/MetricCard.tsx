@@ -14,7 +14,7 @@ export default function MetricCard({ metric }: { metric: Metric }) {
           {style.label}
         </span>
         <p className="mt-3 text-sm leading-relaxed text-slate-500">
-          Your insurer didn&apos;t report this one, so it isn&apos;t scored or counted in the chart.
+          This wasn&apos;t on your scorecard (or couldn&apos;t be read clearly), so it isn&apos;t scored or counted in the chart.
         </p>
       </div>
     );

@@ -1,6 +1,7 @@
 import type { Metric, ScoredMetric } from "./types";
 
 const oneDecimal = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+const fixedOneDecimal = new Intl.NumberFormat("en-US", { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 const wholeDollars = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
 export function formatValue(value: number, unit: Metric["unit"]): string {
@@ -10,7 +11,7 @@ export function formatValue(value: number, unit: Metric["unit"]): string {
     case "%":
       return `${oneDecimal.format(value)}%`;
     case "days":
-      return `${value.toFixed(1)} days`;
+      return `${fixedOneDecimal.format(value)} days`;
     case "/100":
       return `${oneDecimal.format(value)} / 100`;
   }

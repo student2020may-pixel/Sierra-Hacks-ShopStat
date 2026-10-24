@@ -144,7 +144,7 @@ export default function JobsPage() {
           <div className="animate-enter">
             <p className="text-sm [overflow-wrap:anywhere] text-slate-500">
               Analyzed {formatCount(result.jobs.length)} jobs from {source}
-              {skipped > 0 && ` · skipped ${skipped} row${skipped === 1 ? "" : "s"} with missing numbers`}
+              {skipped > 0 && ` · skipped ${skipped} row${skipped === 1 ? "" : "s"} with missing or impossible numbers`}
             </p>
             <p className="mt-1 text-2xl font-bold text-ink">{summary(result)}</p>
             <p className="mt-1 text-sm text-slate-600">
