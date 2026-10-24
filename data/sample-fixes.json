@@ -3,18 +3,30 @@
     "title": "Order every part at teardown",
     "explanation": "All 5 slow jobs needed two or more supplements, so doing a full teardown and ordering every part on day one stops cars from sitting while new parts and approvals catch up.",
     "daysSaved": 1.5,
-    "basedOn": "VAB-1038, VAB-1022, VAB-1031, VAB-1015, VAB-1007 · Supplement rate"
+    "basedOn": "VAB-1038, VAB-1022, VAB-1031, VAB-1015, VAB-1007 · Supplement rate",
+    "metrics": [
+      "supplement_rate",
+      "cycle_time"
+    ]
   },
   {
     "title": "Check stalled cars every morning",
     "explanation": "A five-minute daily review of any car past its expected date would have caught VAB-1038 and VAB-1022 when they were days late instead of three weeks late.",
     "daysSaved": 1.2,
-    "basedOn": "VAB-1038, VAB-1022 · Cycle time"
+    "basedOn": "VAB-1038, VAB-1022 · Cycle time",
+    "metrics": [
+      "cycle_time",
+      "on_time_delivery"
+    ]
   },
   {
     "title": "Get supplement approvals the same day",
     "explanation": "Send photos and the revised estimate to the insurer the moment hidden damage is found, so approvals don't eat into the promised delivery date.",
     "daysSaved": 0.8,
-    "basedOn": "On-time delivery · Supplement rate"
+    "basedOn": "On-time delivery · Supplement rate",
+    "metrics": [
+      "on_time_delivery",
+      "supplement_rate"
+    ]
   }
 ]

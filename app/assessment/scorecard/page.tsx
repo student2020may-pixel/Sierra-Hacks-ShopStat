@@ -24,6 +24,7 @@ const sampleResult = (notice: string): ScoreResponse => ({
   source: "sample",
   metrics: (scorecardData as Scorecard).metrics,
   other_metrics: [],
+  period: (scorecardData as Scorecard).period,
   notice,
 });
 

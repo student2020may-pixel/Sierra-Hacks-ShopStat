@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import scorecardData from "@/data/scorecard.json";
-import { formatValue, meetsTarget } from "@/lib/format";
+import { formatValue, formatVariance, meetsTarget } from "@/lib/format";
 import type { Scorecard } from "@/lib/types";
 
 export const metadata: Metadata = { title: "Granite Mutual – DRP Scorecard" };
@@ -15,15 +15,6 @@ function letterGrade(score: number): string {
   return "F";
 }
 
-function variance(shopValue: number, target: number, unit: string): string {
-  const diff = shopValue - target;
-  const sign = diff > 0 ? "+" : diff < 0 ? "−" : "";
-  const abs = Math.abs(diff);
-  if (unit === "$") return `${sign}$${abs.toLocaleString("en-US")}`;
-  if (unit === "%") return `${sign}${abs} pts`;
-  if (unit === "days") return `${sign}${abs.toFixed(1)} d`;
-  return `${sign}${abs}`;
-}
 
 export default function MockScorecardPage() {
   const { shop, insurer, metrics } = scorecard;
@@ -131,7 +122,7 @@ export default function MockScorecardPage() {
                     <td
                       className={`border-b border-slate-200 px-3 py-2.5 text-right tabular-nums ${ok ? "text-slate-600" : "font-semibold text-danger"}`}
                     >
-                      {variance(m.shopValue, m.target, m.unit)}
+                      {formatVariance(m.shopValue, m.target, m.unit, true)}
                     </td>
                     <td className="border-b border-slate-200 px-3 py-2.5 text-center">
                       <span

@@ -27,6 +27,8 @@ export interface ScoreResponse {
   /** Always the six metrics in canonical order; ones not on the scorecard have null numbers. */
   metrics: Metric[];
   other_metrics: OtherMetric[];
+  /** Reporting period printed on the scorecard, if any. */
+  period?: string | null;
   /** Friendly note shown when source is "sample". */
   notice?: string;
 }

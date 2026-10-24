@@ -49,6 +49,8 @@ explanation: one short sentence a busy shop owner understands — what the numbe
 
 Return all six metrics, in the order listed.
 
+period: the reporting period exactly as printed on the scorecard (e.g. "Q3 2026" or "Jul 1 – Sep 30, 2026"), or null if none is shown.
+
 other_metrics: any OTHER performance metrics on the scorecard that matter to a body shop and aren't one of the six — for example touch time, comeback/redo rate, labor efficiency, photo estimate accuracy, rental days, total loss rate. For each: label as printed, value and target as plain numbers (null if not shown), unit as printed ("%", "$", "hours", "days", or "" if none), and note: one plain-language sentence on what it means for the shop. Leave out shop details, dates, rankings, and anything that isn't a performance metric. Return an empty array if there are none.`;
 
 /** At most this many "Also found" metrics, so a dense scorecard can't flood the page. */
@@ -71,6 +73,7 @@ function sample(notice: string): NextResponse<ScoreResponse> {
     source: "sample",
     metrics: (scorecardData as Scorecard).metrics,
     other_metrics: [],
+    period: (scorecardData as Scorecard).period,
     notice,
   });
 }
@@ -161,7 +164,12 @@ export async function POST(req: Request) {
     if (!metrics.some(isScored)) {
       return sample("We couldn't find any of the six scorecard metrics in this file, so we're showing the sample scorecard.");
     }
-    return NextResponse.json<ScoreResponse>({ source: "ai", metrics, other_metrics: normalizeOther(parsed.other_metrics) });
+    return NextResponse.json<ScoreResponse>({
+      source: "ai",
+      metrics,
+      other_metrics: normalizeOther(parsed.other_metrics),
+      period: parsed.period ? clip(parsed.period, 60) : null,
+    });
   } catch (err) {
     console.error("[api/score] OpenAI call failed:", err);
     if (err instanceof OpenAI.AuthenticationError) {
