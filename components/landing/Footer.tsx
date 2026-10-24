@@ -12,6 +12,7 @@ export default function Footer() {
         <div className="flex flex-wrap items-start justify-between gap-6">
           <div className="space-y-1 text-sm text-bone/70">
             <p>Team: Ishaan Bhatnagar and Sidhak Makkar</p>
+            <p>Built by Ishaan &amp; Sidhak</p>
             <p>Built at Sierra Hacks 2026</p>
             <p className="text-muted">Valley Auto Body and Granite Mutual are fictional sample data.</p>
           </div>
