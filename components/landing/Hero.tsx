@@ -37,7 +37,7 @@ export default function Hero() {
               Start shop assessment <span aria-hidden>→</span>
             </Link>
             <Link
-              href="/results"
+              href="/results?sample=1"
               className="pressable inline-flex w-full items-center justify-center rounded-xl border border-white/20 px-7 py-4 text-base font-semibold text-white hover:bg-white/10 sm:w-auto"
             >
               See a sample report
