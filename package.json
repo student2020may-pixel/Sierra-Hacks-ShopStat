@@ -16,7 +16,8 @@
   },
   "homepage": "https://github.com/student2020may-pixel/Sierra-hacks#readme",
   "dependencies": {
-    "geist": "^1.8.2",
+    "@fontsource-variable/inter-tight": "^5.3.0",
+    "@fontsource/instrument-serif": "^5.3.0",
     "next": "^15.5.28",
     "openai": "^7.43.0",
     "react": "^19.3.1",

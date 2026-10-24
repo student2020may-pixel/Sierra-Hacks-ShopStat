@@ -84,6 +84,17 @@ least 3 extra days). It's deterministic, so the same file flags the same jobs ev
   hours, days, supplements) are sent to OpenAI for the fix list and Ask ShopStats.
 - **Results:** kept in the browser tab's session storage, cleared when the tab closes.
 
+## Landing page gallery
+
+The gallery uses real screenshots of the app. To refresh them after a UI change:
+
+```bash
+npm run build && npm start          # in one terminal
+node scripts/gallery-shots.mjs      # in another (needs Playwright)
+```
+
+This writes `public/gallery/*.jpg` and `data/gallery.json`.
+
 ## Data
 
 `data/scorecard.json` and `data/jobs.csv` describe **Valley Auto Body, a fictional shop** used for

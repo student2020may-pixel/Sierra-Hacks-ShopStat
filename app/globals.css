@@ -1,4 +1,8 @@
 @import "tailwindcss";
+/* Self-hosted fonts from npm (no Google Fonts request at build or run time). */
+@import "@fontsource/instrument-serif/latin-400.css";
+@import "@fontsource/instrument-serif/latin-400-italic.css";
+@import "@fontsource-variable/inter-tight/index.css";
 
 /*
  * ShopStats color tokens — the single source for every app page and chart.
@@ -16,8 +20,20 @@
   --color-page: #f8fafc;
   --color-ink: #0f172a;
 
-  /* Geist, bundled locally by the geist package (no Google Fonts request at build time). */
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  /* Inter Tight for text, Instrument Serif for display headings. */
+  --font-sans: "Inter Tight Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+
+  /* Night-and-gold editorial palette for the marketing pages. */
+  --color-night: #0b0b0c;
+  --color-night-2: #141416;
+  --color-bone: #ede9e1;
+  --color-muted: #8f8a82;
+  --color-gold: #c9a86a;
+  --color-line: rgb(237 233 225 / 0.12);
+
+  /* The landing headline and reveals use this softer, longer ease. */
+  --ease-lux: cubic-bezier(0.2, 0.7, 0.2, 1);
 
   /* Strong ease-out: starts fast so entering content feels immediate. */
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -120,4 +136,180 @@
   label {
     touch-action: manipulation;
   }
+}
+
+/* ———————————————————————————— Editorial design system ———————————————————————————— */
+
+/* Loading screen: wordmark fades in and out (700ms), then the screen fades away (200ms). Once per
+   visit: an inline script in the layout adds .intro-seen before first paint on later page loads. */
+.loader {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: var(--color-night);
+  animation: loader-out 200ms ease 700ms forwards;
+}
+.loader-mark {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 9vw, 5rem);
+  letter-spacing: 0.08em;
+  color: var(--color-bone);
+  animation: loader-mark 700ms var(--ease-lux) both;
+}
+@keyframes loader-mark {
+  0% { opacity: 0; transform: translateY(6px); }
+  40%, 70% { opacity: 1; transform: none; }
+  100% { opacity: 0; }
+}
+@keyframes loader-out {
+  to { opacity: 0; visibility: hidden; }
+}
+.intro-seen .loader { display: none; }
+
+/* Film grain: a tiny SVG noise tile over everything, ignored by the pointer. */
+.grain {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  opacity: 0.06;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Hero headline: each word rises and fades in, 80ms apart, after the loader (or right away if seen). */
+.rise-word {
+  display: inline-block;
+  animation: rise 700ms var(--ease-lux) both;
+  animation-delay: calc(var(--i) * 80ms + var(--intro-delay, 850ms));
+}
+.intro-seen .rise-word { --intro-delay: 100ms; }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(0.45em); }
+}
+
+/* Slow zoom on the hero card. */
+.slow-zoom { animation: slow-zoom 6s var(--ease-lux) both; }
+@keyframes slow-zoom {
+  from { transform: scale(1.06); }
+}
+
+/* Fade-up reveal, toggled by the Reveal component's IntersectionObserver. */
+.reveal {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 700ms var(--ease-lux), transform 700ms var(--ease-lux);
+}
+.reveal.is-visible { opacity: 1; transform: none; }
+
+/* Marquee: two copies of the row slide left forever; hovering pauses it. */
+.marquee-track { animation: marquee 30s linear infinite; }
+.marquee:hover .marquee-track { animation-play-state: paused; }
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+
+/* Buttons fill on hover and their arrow slides 6px; links get an underline that grows left to right. */
+.btn-lux {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  border: 1px solid var(--color-gold);
+  border-radius: 999px;
+  padding: 0.95rem 1.6rem;
+  font-weight: 500;
+  color: var(--color-bone);
+  background: transparent;
+  transition: background-color 250ms ease, color 250ms ease, transform 150ms var(--ease-out);
+}
+.btn-lux-solid { background: var(--color-gold); color: var(--color-night); }
+.btn-lux .arrow { transition: transform 250ms var(--ease-lux); }
+.btn-lux:active { transform: scale(0.97); }
+.link-lux {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0% 1px;
+  transition: background-size 300ms var(--ease-lux);
+}
+@media (hover: hover) and (pointer: fine) {
+  .btn-lux:hover { background: var(--color-gold); color: var(--color-night); }
+  .btn-lux-solid:hover { background: var(--color-bone); }
+  .btn-lux:hover .arrow { transform: translateX(6px); }
+  .link-lux:hover { background-size: 100% 1px; }
+}
+
+/* Floating labels: the label sits in the field and moves up and shrinks when focused or filled. */
+.field { position: relative; }
+.field input,
+.field textarea {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--color-line);
+  background: transparent;
+  padding: 1.4rem 0 0.5rem;
+  color: var(--color-bone);
+  outline: none;
+  transition: border-color 200ms ease;
+}
+.field input:focus,
+.field textarea:focus { border-color: var(--color-gold); }
+.field label {
+  pointer-events: none;
+  position: absolute;
+  left: 0;
+  top: 1.35rem;
+  color: var(--color-muted);
+  transform-origin: left top;
+  transition: transform 200ms var(--ease-lux), color 200ms ease;
+}
+.field input:focus + label,
+.field input:not(:placeholder-shown) + label,
+.field textarea:focus + label,
+.field textarea:not(:placeholder-shown) + label {
+  transform: translateY(-1.2rem) scale(0.78);
+  color: var(--color-gold);
+}
+
+/* Reduced motion: no loader, no grain movement, everything in its final state. */
+@media (prefers-reduced-motion: reduce) {
+  .loader { display: none; }
+  .rise-word,
+  .slow-zoom,
+  .marquee-track { animation: none; }
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .btn-lux,
+  .btn-lux .arrow,
+  .link-lux,
+  .field label { transition: none; }
+}
+
+/* Full-screen phone menu: links rise in one after another. */
+.menu-item {
+  animation: rise 500ms var(--ease-lux) both;
+  animation-delay: calc(var(--i) * 70ms + 60ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .menu-item { animation: none; }
+  header { transition: none !important; }
+}
+
+/* Hero scroll cue: a gold tick travels down a thin line. */
+.scroll-cue::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -40%;
+  width: 1px;
+  height: 40%;
+  background: var(--color-gold);
+  animation: scroll-cue 1.8s var(--ease-lux) infinite;
+}
+@keyframes scroll-cue {
+  to { top: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .scroll-cue::after { animation: none; top: 30%; }
 }
