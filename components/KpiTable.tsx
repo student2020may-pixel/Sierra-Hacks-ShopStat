@@ -102,7 +102,7 @@ export default function KpiTable({ metrics, fixes, period, jobCount }: Props) {
             <li key={m.key} className={`px-4 py-3 ${weak ? "border-l-4 border-danger bg-danger/5" : ""}`}>
               <div className="flex items-start justify-between gap-3">
                 <p className="min-w-0 font-semibold text-bone">
-                  {STAT_LABELS[m.key].full} <span className="font-mono text-xs text-muted">{STAT_LABELS[m.key].short}</span>
+                  {STAT_LABELS[m.key].full}
                 </p>
                 <StatusDot status={status} />
               </div>
@@ -144,8 +144,7 @@ export default function KpiTable({ metrics, fixes, period, jobCount }: Props) {
               return [
                 <tr key={m.key} className={`${rowTint} ${weak ? "" : "border-b border-line"}`}>
                   <td className={`px-6 py-3 ${weak ? "border-l-4 border-danger pl-5" : ""}`}>
-                    <span className="font-semibold text-bone">{STAT_LABELS[m.key].full}</span>{" "}
-                    <span className="font-mono text-xs text-muted">{STAT_LABELS[m.key].short}</span>
+                    <span className="font-semibold text-bone">{STAT_LABELS[m.key].full}</span>
                   </td>
                   {isScored(m) ? (
                     <>
