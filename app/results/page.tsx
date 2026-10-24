@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import AskShopStats from "@/components/AskShopStats";
 import Notice from "@/components/Notice";
 import StatSheet from "@/components/StatSheet";
 import Skeleton from "@/components/Skeleton";
@@ -43,17 +44,27 @@ async function loadInputs(): Promise<Inputs> {
   return { metrics: score?.metrics ?? scorecard.metrics, jobs, sampleScores: !score, sampleJobs };
 }
 
-async function fetchFixes(inputs: Inputs): Promise<FixesResponse> {
-  const body: FixesRequest = {
-    metrics: inputs.metrics,
-    flagged: (inputs.jobs?.flagged ?? []).map(({ jobId, laborHours, daysInShop, expectedDays, extraDays, supplements }) => ({
+/** The worst slow jobs, trimmed to what the AI routes accept (a big CSV can flag hundreds). */
+const MAX_JOBS_FOR_AI = 50;
+function worstJobs(jobs: AnomalyResult | null) {
+  return (jobs?.flagged ?? [])
+    .slice()
+    .sort((a, b) => b.extraDays - a.extraDays)
+    .slice(0, MAX_JOBS_FOR_AI)
+    .map(({ jobId, laborHours, daysInShop, expectedDays, extraDays, supplements }) => ({
       jobId,
       laborHours,
       daysInShop,
       expectedDays,
       extraDays,
       supplements,
-    })),
+    }));
+}
+
+async function fetchFixes(inputs: Inputs): Promise<FixesResponse> {
+  const body: FixesRequest = {
+    metrics: inputs.metrics,
+    flagged: worstJobs(inputs.jobs),
     totalExtraDays: inputs.jobs?.totalExtraDays ?? 0,
     jobCount: inputs.jobs?.jobs.length ?? 0,
   };
@@ -285,6 +296,21 @@ export default function ResultsPage() {
       </section>
 
       {cycle && fixes && <BeforeAfter cycle={cycle} fixes={fixes.fixes} />}
+
+      {fixes && (
+        <div className="animate-enter [animation-delay:240ms]">
+          <AskShopStats
+            context={{
+              metrics: inputs.metrics,
+              flagged: worstJobs(inputs.jobs),
+              flaggedCount: inputs.jobs?.flagged.length ?? 0,
+              totalExtraDays: inputs.jobs?.totalExtraDays ?? 0,
+              jobCount: inputs.jobs?.jobs.length ?? 0,
+              fixes: fixes.fixes.slice(0, 3),
+            }}
+          />
+        </div>
+      )}
     </main>
   );
 }

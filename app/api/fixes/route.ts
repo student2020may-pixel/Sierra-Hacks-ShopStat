@@ -14,7 +14,7 @@ const MAX_DAYS_PER_FIX = 5;
 
 const SYSTEM_PROMPT = `You advise auto body shop owners on how to cut repair cycle time (how many days a car stays in the shop).
 
-You'll get the shop's insurer scorecard (up to six metrics with a 0–100 score each) and the repair jobs that took far longer than their labor hours predicted.
+You'll get the shop's insurer scorecard (up to six metrics, each with a 0–100 score where 85 means exactly on target) and the repair jobs that took far longer than their labor hours predicted.
 
 Return exactly 3 fixes, most impactful first. Each fix must:
 - title: a short action, 3–7 words, e.g. "Order every part at teardown".
@@ -44,7 +44,7 @@ function describe(input: FixesRequest): string {
         )
         .join("\n")
     : "- None flagged";
-  return `Scorecard:\n${metrics}\n\nSlow jobs (${input.flagged.length} of ${input.jobCount}, ${input.totalExtraDays} extra days total):\n${jobs}`;
+  return `Scorecard:\n${metrics}\n\nSlow jobs (the worst ${input.flagged.length} of the flagged jobs, out of ${input.jobCount} jobs; ${input.totalExtraDays} extra days in total across all flagged jobs):\n${jobs}`;
 }
 
 export async function POST(req: Request) {

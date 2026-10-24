@@ -6,7 +6,10 @@ import scorecardData from "@/data/scorecard.json";
 import { getClient, MODEL } from "@/lib/openai";
 import { clip } from "@/lib/text";
 import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema, type MetricUnit } from "@/lib/schemas";
+import { scoreMetric } from "@/lib/scoring";
 import { isScored, type Metric, type OtherMetric, type Scorecard, type ScoreResponse } from "@/lib/types";
+import type { z } from "zod";
+import type { ExtractedMetricSchema } from "@/lib/schemas";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -40,15 +43,9 @@ ${METRIC_LIST}
 For each metric return the shop's value and the insurer's target as plain numbers (no symbols; 33% → 33, $3,410 → 3410).
 The scorecard may use different names for a metric (e.g. "repair cycle time", "CSI", "severity", "parts utilization") — map them.
 
-If a metric is NOT on the scorecard, do not guess or estimate it: set shopValue, target, and score to null, and set explanation to "Not on this scorecard." If the shop's value is shown but no target is, set target and score to null too.
+If a metric is NOT on the scorecard, do not guess or estimate it: set shopValue and target to null and set explanation to "Not on this scorecard." If the shop's value is shown but no target is, set target to null too.
 
-score (0–100) reflects how the shop is doing against the target:
-- Meets or beats the target: 85–100 (higher the further past target).
-- Misses by a little (within ~10% of target): 65–84.
-- Misses clearly (10–30%): 40–64.
-- Misses badly (more than 30%): 0–39.
-
-explanation: one short sentence a busy shop owner understands — what the number means and whether it's helping or hurting. No jargon, no metric codes.
+explanation: one short sentence a busy shop owner understands — what the number means compared with the target and whether it's helping or hurting. No jargon, no metric codes. Don't invent a score; just read the numbers.
 
 Return all six metrics, in the order listed.
 
@@ -83,27 +80,29 @@ function badRequest(error: string) {
 }
 
 /**
- * Returns the six metrics in canonical order. A metric the model skipped, or returned with only
- * some of its numbers, becomes "not on this scorecard" (all three numbers null) — never a guess.
+ * Returns the six metrics in canonical order with scores computed in code (lib/scoring.ts). A
+ * metric the model skipped, returned with only some of its numbers, or read as an impossible value
+ * becomes "not on this scorecard" (null numbers) — never a guess.
  */
-function normalize(metrics: Metric[]): Metric[] {
+function normalize(extracted: z.infer<typeof ExtractedMetricSchema>[]): Metric[] {
   return METRIC_KEYS.map((key) => {
-    const m = metrics.find((x) => x.key === key);
+    const m = extracted.find((x) => x.key === key);
     const d = METRIC_DEFS[key];
-    const usable =
-      m &&
-      m.shopValue !== null &&
-      m.target !== null &&
-      m.score !== null &&
-      plausible(m.shopValue, d.unit) &&
-      plausible(m.target, d.unit);
-    if (!m || !usable) {
+    if (
+      !m ||
+      m.shopValue === null ||
+      m.target === null ||
+      !plausible(m.shopValue, d.unit) ||
+      !plausible(m.target, d.unit)
+    ) {
       return { key, ...d, shopValue: null, target: null, score: null, explanation: "Not on this scorecard." };
     }
     return {
-      ...m,
+      key,
       ...d,
-      score: Math.round(Math.min(100, Math.max(0, m.score!))),
+      shopValue: m.shopValue,
+      target: m.target,
+      score: scoreMetric(m.shopValue, m.target, d.higherIsBetter),
       explanation: clip(m.explanation, 240),
     };
   });
