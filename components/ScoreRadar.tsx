@@ -23,7 +23,9 @@ const SHORT_LABELS: Record<MetricKey, string> = {
 
 /** Score a metric gets for just meeting its target (see the scoring rubric in /api/score). */
 const TARGET_SCORE = 85;
-const SHOP = "#3b82f6"; // blue-500
+// Theme tokens from app/globals.css. Accent is too light for a line on white, so it only fills.
+const OUTLINE = "var(--color-primary)";
+const FILL = "var(--color-accent)";
 
 export default function ScoreRadar({ metrics }: { metrics: Metric[] }) {
   const data = metrics.map((m) => ({ metric: SHORT_LABELS[m.key], score: m.score, target: TARGET_SCORE }));
@@ -48,11 +50,11 @@ export default function ScoreRadar({ metrics }: { metrics: Metric[] }) {
           <Radar
             name="Your score"
             dataKey="score"
-            stroke={SHOP}
+            stroke={OUTLINE}
             strokeWidth={2}
-            fill={SHOP}
-            fillOpacity={0.25}
-            dot={{ r: 4, fill: SHOP, stroke: "#fff", strokeWidth: 2 }}
+            fill={FILL}
+            fillOpacity={0.4}
+            dot={{ r: 4, fill: OUTLINE, stroke: "#fff", strokeWidth: 2 }}
             isAnimationActive={false}
           />
           <Tooltip formatter={(value) => [`${value} / 100`]} />

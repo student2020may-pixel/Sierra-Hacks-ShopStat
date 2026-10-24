@@ -108,20 +108,20 @@ function SampleNote({ sampleScores, sampleJobs }: Pick<Inputs, "sampleScores" | 
 function Banner({ jobs }: { jobs: AnomalyResult | null }) {
   const days = jobs?.totalExtraDays ?? 0;
   return (
-    <section className="rounded-2xl bg-slate-900 px-6 py-8 text-white sm:px-10">
+    <section className="rounded-2xl bg-primary px-6 py-8 text-white sm:px-10">
       {days > 0 ? (
         <>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            {SHOP_NAME} is losing <span className="text-amber-300">{days}</span> car-days a quarter
+            {SHOP_NAME} is losing <span className="text-accent">{days}</span> car-days a quarter
           </h1>
-          <p className="mt-2 text-lg text-slate-300">
+          <p className="mt-2 text-lg text-white/80">
             That&apos;s {days} days families spent without their car.
           </p>
         </>
       ) : (
         <>
           <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{SHOP_NAME}&apos;s results</h1>
-          <p className="mt-2 text-lg text-slate-300">No jobs ran unusually long. Here&apos;s how your scorecard looks.</p>
+          <p className="mt-2 text-lg text-white/80">No jobs ran unusually long. Here&apos;s how your scorecard looks.</p>
         </>
       )}
     </section>
@@ -131,13 +131,13 @@ function Banner({ jobs }: { jobs: AnomalyResult | null }) {
 function FixCard({ fix, rank }: { fix: Fix; rank: number }) {
   return (
     <li className="flex gap-4 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white">
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary font-bold text-white">
         {rank}
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-          <h3 className="text-lg font-semibold text-slate-900">{fix.title}</h3>
-          <span className="text-sm font-semibold whitespace-nowrap text-green-700">
+          <h3 className="text-lg font-semibold text-ink">{fix.title}</h3>
+          <span className="text-sm font-semibold whitespace-nowrap text-success">
             saves ~{fix.daysSaved} day{fix.daysSaved === 1 ? "" : "s"} per car
           </span>
         </div>
@@ -155,22 +155,22 @@ function BeforeAfter({ cycle, fixes }: { cycle: Metric; fixes: Fix[] }) {
   const projected = Math.round(Math.max(current * 0.5, current - saved) * 10) / 10;
   const scaleMax = Math.max(current, cycle.target) * 1.1;
   const rows = [
-    { label: "Today", value: current, color: "bg-red-500" },
-    { label: "With these fixes (estimate)", value: projected, color: "bg-green-500" },
+    { label: "Today", value: current, color: "bg-danger" },
+    { label: "With these fixes (estimate)", value: projected, color: "bg-success" },
   ];
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-xl font-bold text-slate-900">Before vs. after: cycle time</h2>
-        <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">Estimate</span>
+        <h2 className="text-xl font-bold text-primary">Before vs. after: cycle time</h2>
+        <span className="rounded-full bg-warning/20 px-3 py-1 text-xs font-semibold text-ink">Estimate</span>
       </div>
       <div className="relative mt-6 space-y-4">
         {rows.map((r) => (
           <div key={r.label}>
             <div className="flex justify-between text-sm">
               <span className="text-slate-600">{r.label}</span>
-              <span className="font-semibold text-slate-900 tabular-nums">{r.value.toFixed(1)} days</span>
+              <span className="font-semibold text-ink tabular-nums">{r.value.toFixed(1)} days</span>
             </div>
             <div className="mt-1 h-4 rounded-full bg-slate-100">
               <div className={`h-full rounded-full ${r.color}`} style={{ width: `${(r.value / scaleMax) * 100}%` }} />
@@ -229,13 +229,13 @@ export default function ResultsPage() {
       <Banner jobs={inputs.jobs} />
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h2 className="text-xl font-bold text-slate-900">Scorecard at a glance</h2>
+        <h2 className="text-xl font-bold text-primary">Scorecard at a glance</h2>
         <p className="mt-1 text-sm text-slate-600">Each score is out of 100. Anything inside the dashed line is below target.</p>
         <ScoreRadar metrics={inputs.metrics} />
       </section>
 
       <section>
-        <h2 className="text-xl font-bold text-slate-900">Top 3 fixes to cut repair time</h2>
+        <h2 className="text-xl font-bold text-primary">Top 3 fixes to cut repair time</h2>
         {!fixes ? (
           <div className="mt-4 rounded-xl border border-slate-200 bg-white p-6">
             <Spinner label="Asking AI for your top fixes… this takes about 10–20 seconds." />

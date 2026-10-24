@@ -15,8 +15,9 @@ import {
 } from "recharts";
 import type { AnomalyResult, ScoredJob } from "@/lib/anomaly";
 
-const NORMAL = "#3b82f6"; // blue-500
-const OUTLIER = "#dc2626"; // red-600
+// Theme tokens from app/globals.css.
+const NORMAL = "var(--color-primary)";
+const OUTLIER = "var(--color-danger)";
 const INK_MUTED = "#64748b"; // slate-500
 
 function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload: ScoredJob }[] }) {
@@ -24,9 +25,9 @@ function JobTooltip({ active, payload }: { active?: boolean; payload?: { payload
   if (!active || !job) return null;
   return (
     <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 shadow-md">
-      <p className="font-semibold text-slate-900">
+      <p className="font-semibold text-ink">
         {job.jobId}
-        {job.isOutlier && <span className="ml-2 font-bold text-red-700">Outlier</span>}
+        {job.isOutlier && <span className="ml-2 font-bold text-danger">Outlier</span>}
       </p>
       <p>{job.laborHours} labor hours</p>
       <p>

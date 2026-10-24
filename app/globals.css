@@ -1,11 +1,23 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+/*
+ * ShopStats color tokens — the single source for every app page and chart.
+ * Tailwind classes: bg-primary, text-danger, border-success/30, etc.
+ * Charts (Recharts SVG) reference the same tokens as var(--color-*).
+ * "static" keeps every token emitted even if no class uses it, so charts can rely on it.
+ */
+@theme static {
+  --color-primary: #0f4c81;
+  --color-primary-hover: #0d3f6a;
+  --color-accent: #22d3ee;
+  --color-danger: #dc2626; /* below target, outliers */
+  --color-warning: #f59e0b; /* slightly below target */
+  --color-success: #16a34a; /* meets target */
+  --color-page: #f8fafc;
+  --color-ink: #0f172a;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-page);
+  color: var(--color-ink);
 }

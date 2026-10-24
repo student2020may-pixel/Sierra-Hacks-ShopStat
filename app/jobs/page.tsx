@@ -88,14 +88,14 @@ export default function JobsPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-10">
-      <h1 className="text-3xl font-bold tracking-tight text-slate-900">Find the jobs that dragged on</h1>
+      <h1 className="text-3xl font-bold tracking-tight text-primary">Find the jobs that dragged on</h1>
       <p className="mt-2 text-slate-600">
         Upload a CSV of recent repair jobs. We compare each job&apos;s days in the shop to what its labor hours
         predict and flag the ones that took far longer.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <label className="cursor-pointer rounded-lg bg-blue-600 px-5 py-2.5 font-semibold text-white transition-colors hover:bg-blue-700">
+        <label className="cursor-pointer rounded-lg bg-primary px-5 py-2.5 font-semibold text-white transition-colors hover:bg-primary-hover">
           Upload jobs.csv
           <input
             type="file"
@@ -138,7 +138,7 @@ export default function JobsPage() {
               Analyzed {result.jobs.length} jobs from {source}
               {skipped > 0 && ` · skipped ${skipped} row${skipped === 1 ? "" : "s"} with missing numbers`}
             </p>
-            <p className="mt-1 text-2xl font-bold text-slate-900">{summary(result)}</p>
+            <p className="mt-1 text-2xl font-bold text-ink">{summary(result)}</p>
             <p className="mt-1 text-sm text-slate-600">
               A typical job here takes about {result.fit.baseDays} days plus{" "}
               {(result.fit.daysPerLaborHour * 10).toFixed(1)} days for every 10 labor hours.
@@ -146,14 +146,14 @@ export default function JobsPage() {
           </div>
 
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <h2 className="px-2 font-semibold text-slate-900">Labor hours vs. days in shop</h2>
+            <h2 className="px-2 font-semibold text-primary">Labor hours vs. days in shop</h2>
             <JobsScatter result={result} />
           </div>
 
           {result.flagged.length > 0 && (
             <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
               <table className="w-full text-sm">
-                <caption className="px-4 pt-4 text-left font-semibold text-slate-900">Flagged jobs</caption>
+                <caption className="px-4 pt-4 text-left font-semibold text-primary">Flagged jobs</caption>
                 <thead>
                   <tr className="border-b border-slate-200 text-left text-xs text-slate-500 uppercase">
                     <th className="px-4 py-3 font-semibold">Job ID</th>
@@ -166,11 +166,11 @@ export default function JobsPage() {
                 <tbody>
                   {result.flagged.map((j) => (
                     <tr key={j.jobId} className="border-b border-slate-100 last:border-0">
-                      <td className="px-4 py-3 font-medium text-slate-900">{j.jobId}</td>
+                      <td className="px-4 py-3 font-medium text-ink">{j.jobId}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{j.laborHours}</td>
                       <td className="px-4 py-3 text-right tabular-nums">{j.daysInShop}</td>
                       <td className="px-4 py-3 text-right tabular-nums text-slate-600">{j.expectedDays.toFixed(1)}</td>
-                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-red-700">
+                      <td className="px-4 py-3 text-right font-semibold tabular-nums text-danger">
                         +{j.extraDays.toFixed(1)}
                       </td>
                     </tr>
@@ -181,7 +181,7 @@ export default function JobsPage() {
           )}
 
           <div className="flex justify-end">
-            <Link href="/results" className="text-sm font-semibold text-blue-600 hover:text-blue-800">
+            <Link href="/results" className="text-sm font-semibold text-primary hover:text-primary-hover">
               Next: see your results →
             </Link>
           </div>

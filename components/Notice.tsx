@@ -1,6 +1,6 @@
 const styles = {
-  error: "border-red-200 bg-red-50 text-red-800",
-  info: "border-amber-200 bg-amber-50 text-amber-900",
+  error: "border-danger/30 bg-danger/5 text-danger",
+  info: "border-warning/40 bg-warning/10 text-ink",
 };
 
 export default function Notice({ kind, children }: { kind: keyof typeof styles; children: React.ReactNode }) {
