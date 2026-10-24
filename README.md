@@ -75,6 +75,15 @@ least 3 extra days). It's deterministic, so the same file flags the same jobs ev
 - **Fallbacks:** if the AI is unavailable, the app shows the sample scorecard or sample fixes with a
   note, and Ask ShopStats answers its suggested questions directly from the numbers.
 
+## Your data
+
+- **Scorecard file:** sent from the server to OpenAI to read the numbers, held in memory only, never
+  written to disk or a database. Requests use `store: false` so OpenAI doesn't keep the response for
+  later retrieval (OpenAI's own retention policy for abuse monitoring still applies).
+- **Jobs CSV:** read in the browser and never uploaded. Only the slow jobs' numbers (job ID, labor
+  hours, days, supplements) are sent to OpenAI for the fix list and Ask ShopStats.
+- **Results:** kept in the browser tab's session storage, cleared when the tab closes.
+
 ## Data
 
 `data/scorecard.json` and `data/jobs.csv` describe **Valley Auto Body, a fictional shop** used for
