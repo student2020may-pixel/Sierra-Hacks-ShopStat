@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Progress from "@/components/assessment/Progress";
 import StepNav from "@/components/assessment/StepNav";
+import GradeExplainer from "@/components/GradeExplainer";
 import MetricCard from "@/components/MetricCard";
 import Notice from "@/components/Notice";
 import OtherMetrics from "@/components/OtherMetrics";
@@ -217,6 +218,9 @@ export default function ScorecardStep() {
           </p>
           <div className="mt-4 animate-enter">
             <StatSheet metrics={result.metrics} />
+          </div>
+          <div className="mt-3">
+            <GradeExplainer metrics={result.metrics} />
           </div>
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {result.metrics.map((m, i) => (
