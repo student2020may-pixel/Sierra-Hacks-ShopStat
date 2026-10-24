@@ -119,6 +119,10 @@ export default function JobsStep() {
         Export last quarter&apos;s repair orders from your shop management software as a CSV, with job ID, labor hours,
         and dates in and out.
       </p>
+      <p className="mt-1 text-sm text-slate-500">
+        <span className="font-semibold text-slate-600">Your file:</span> read right here in your browser, not uploaded. Only the slow
+        jobs&apos; numbers are sent to OpenAI, to write your fix list and answer your questions.
+      </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label className="pressable cursor-pointer rounded-lg bg-primary px-5 py-3 font-semibold text-white hover:bg-primary-hover">

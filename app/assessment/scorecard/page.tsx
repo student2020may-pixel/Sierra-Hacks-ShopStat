@@ -125,6 +125,10 @@ export default function ScorecardStep() {
       <p className="mt-2 text-sm text-slate-500">
         Insurers send these as a PDF or through their online portal. A photo or screenshot works too.
       </p>
+      <p className="mt-1 text-sm text-slate-500">
+        <span className="font-semibold text-slate-600">Your file:</span> sent to OpenAI only to read the numbers, and not saved by
+        ShopStats. Your results stay in this browser tab.
+      </p>
 
       <label
         onDragOver={(e) => {

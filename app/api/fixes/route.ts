@@ -58,6 +58,8 @@ export async function POST(req: Request) {
   try {
     const response = await client.responses.parse({
       model: MODEL,
+      // Don't let OpenAI keep the response for later retrieval (the Responses API stores it for 30+ days by default).
+      store: false,
       instructions: SYSTEM_PROMPT,
       input: describe(parsed.data),
       text: { format: zodTextFormat(FixesOutputSchema, "fixes") },

@@ -66,6 +66,8 @@ export async function POST(req: Request) {
   try {
     const response = await client.responses.create({
       model: MODEL,
+      // Don't let OpenAI keep the response for later retrieval (the Responses API stores it for 30+ days by default).
+      store: false,
       instructions: INSTRUCTIONS,
       input: `${shopData(input)}\n\nQuestion: ${input.question}`,
     });
