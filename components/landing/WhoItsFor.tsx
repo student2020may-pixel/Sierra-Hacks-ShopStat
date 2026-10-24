@@ -11,7 +11,7 @@ const NOTES = [
 
 export default function WhoItsFor() {
   return (
-    <section className="px-safe overflow-hidden bg-night-2 py-24 text-bone sm:py-32">
+    <section className="px-safe overflow-hidden bg-night-2 py-16 text-bone sm:py-20">
       <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-2 lg:gap-20">
         <Reveal>
           <p className="text-xs tracking-[0.25em] text-gold uppercase">Who it’s for</p>
