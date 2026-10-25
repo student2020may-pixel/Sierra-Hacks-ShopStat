@@ -35,8 +35,12 @@ export default function StatSheet({ metrics }: { metrics: Metric[] }) {
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-white/10 px-4 py-3 sm:px-5">
         <p className="text-xs font-semibold tracking-[0.2em] text-gold uppercase">Shop stat sheet</p>
         {level !== null && (
-          <p className="rounded-md bg-gold/15 px-2.5 py-1 font-mono text-sm font-bold text-gold ring-1 ring-gold/40">
-            Level {level} · Grade {letterGrade(level)}
+          <p className="flex items-baseline gap-1 rounded-md bg-gold/15 px-2.5 py-1.5 text-[11px] font-semibold whitespace-nowrap text-gold ring-1 ring-gold/40 sm:gap-1.5 sm:px-3 sm:text-sm">
+            <span>ShopStats score </span>
+            <span className="font-mono text-2xl leading-none font-bold tabular-nums sm:text-[1.75rem]">{level}</span>
+            <span className="-ml-0.5 font-mono text-gold/75">/100 </span>
+            <span aria-hidden className="text-gold/60">·</span>
+            <span> Grade {letterGrade(level)}</span>
           </p>
         )}
       </div>

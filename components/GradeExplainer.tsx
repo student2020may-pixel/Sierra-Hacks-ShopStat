@@ -14,7 +14,7 @@ function example(metrics: Metric[]): string | null {
   return `Your ${name} is ${formatValue(pick.shopValue, pick.unit)} against a target of ${formatValue(pick.target, pick.unit)}. That's ${off}% ${ahead ? "better than" : "off"} target, so it scores ${pick.score}.`;
 }
 
-/** Collapsible plain-English version of lib/scoring.ts and the shop level. */
+/** Collapsible plain-English version of lib/scoring.ts and the ShopStats score. */
 export default function GradeExplainer({ metrics }: { metrics: Metric[] }) {
   const eg = example(metrics);
   return (
@@ -36,7 +36,7 @@ export default function GradeExplainer({ metrics }: { metrics: Metric[] }) {
           </li>
           <li>For cycle time, repair cost, and supplement rate, lower is better. For satisfaction, alternate parts, and on-time delivery, higher is better.</li>
           <li>
-            <span className="font-semibold">Your shop level</span> is the average of those scores. Metrics that aren&apos;t on your scorecard don&apos;t count. Grades: A is 90+, B 80+, C 70+, D 60+, F below 60.
+            <span className="font-semibold">Your ShopStats score</span> is the average of those scores. Metrics that aren&apos;t on your scorecard don&apos;t count. Grades: A is 90+, B 80+, C 70+, D 60+, F below 60.
           </li>
         </ul>
         {eg && <p className="rounded-lg bg-night px-3 py-2 text-bone/70">Example: {eg}</p>}
