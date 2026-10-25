@@ -88,28 +88,40 @@ function NavBar({ sample }: { sample: boolean }) {
             Shop<span className="text-gold italic">Stats</span>
           </Link>
 
-          <ul className="hidden items-center gap-7 text-sm md:flex">
-            {LINKS.map((l) => (
-              <li key={l.id}>
-                <Link href={l.href} className={desktopLink(l.id)} aria-current={active === l.id ? "page" : undefined}>
-                  {l.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <div className="flex items-center gap-3 md:gap-7">
+            <ul className="hidden items-center gap-7 text-sm md:flex">
+              {LINKS.map((l) => (
+                <li key={l.id}>
+                  <Link href={l.href} className={desktopLink(l.id)} aria-current={active === l.id ? "page" : undefined}>
+                    {l.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
 
-          <button
-            type="button"
-            onClick={() => setOpen((o) => !o)}
-            aria-expanded={open}
-            aria-controls="mobile-menu"
-            aria-label={open ? "Close menu" : "Open menu"}
-            className="pressable relative z-10 -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-bone md:hidden"
-          >
-            <svg aria-hidden className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-              {open ? <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /> : <path strokeLinecap="round" d="M4 9h16M4 15h16" />}
-            </svg>
-          </button>
+            <Link
+              href="/admin"
+              aria-current={pathname === "/admin" ? "page" : undefined}
+              className={`pressable rounded-md px-2 py-1 font-mono text-[11px] tracking-[0.15em] uppercase ring-1 transition-colors ${
+                pathname === "/admin" ? "text-gold ring-gold/60" : "text-gold/70 ring-gold/25 hover:text-gold hover:ring-gold/50"
+              }`}
+            >
+              Admin
+            </Link>
+
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              aria-controls="mobile-menu"
+              aria-label={open ? "Close menu" : "Open menu"}
+              className="pressable relative z-10 -mr-2 flex h-11 w-11 items-center justify-center rounded-full text-bone md:hidden"
+            >
+              <svg aria-hidden className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+                {open ? <path strokeLinecap="round" d="M6 6l12 12M18 6L6 18" /> : <path strokeLinecap="round" d="M4 9h16M4 15h16" />}
+              </svg>
+            </button>
+          </div>
         </nav>
       </header>
 

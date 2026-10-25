@@ -1,9 +1,9 @@
-import OpenAI from "openai";
 import { NextResponse } from "next/server";
 import { answerFromData, type AskResponse } from "@/lib/ask";
 import { AskRequestSchema } from "@/lib/schemas";
 import type { AskRequest } from "@/lib/types";
-import { getClient, MODEL } from "@/lib/openai";
+import { aiConfigured, aiText } from "@/lib/ai";
+import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 import { clip } from "@/lib/text";
 
 export const runtime = "nodejs";
@@ -60,23 +60,14 @@ export async function POST(req: Request) {
   }
   const input = parsed.data;
 
-  const client = getClient();
-  if (!client) return fallback(input, "AI answers aren't set up yet (no API key).");
+  if (!aiConfigured()) return fallback(input, "AI answers aren't set up yet (no API key).");
+  if (!allowAiRequest(req)) return fallback(input, LIMIT_NOTICE);
 
   try {
-    const response = await client.responses.create({
-      model: MODEL,
-      // Don't let OpenAI keep the response for later retrieval (the Responses API stores it for 30+ days by default).
-      store: false,
-      instructions: INSTRUCTIONS,
-      input: `${shopData(input)}\n\nQuestion: ${input.question}`,
-    });
-    const answer = response.output_text?.trim();
+    const answer = await aiText("api/ask", { instructions: INSTRUCTIONS, text: `${shopData(input)}\n\nQuestion: ${input.question}` });
     if (!answer) return fallback(input, "The AI didn't return an answer.");
     return NextResponse.json<AskResponse>({ answer: clip(answer, 600), source: "ai" });
-  } catch (err) {
-    console.error("[api/ask] OpenAI call failed:", err);
-    if (err instanceof OpenAI.RateLimitError) return fallback(input, "The AI is busy right now.");
+  } catch {
     return fallback(input, "We couldn't reach the AI just now.");
   }
 }
