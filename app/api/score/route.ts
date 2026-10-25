@@ -1,9 +1,7 @@
-import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
-import type { ResponseInputContent } from "openai/resources/responses/responses";
 import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
-import { getClient, MODEL } from "@/lib/openai";
+import { aiConfigured, aiJson } from "@/lib/ai";
+import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 import { clip } from "@/lib/text";
 import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
 import { plausible, scoreMetric } from "@/lib/scoring";
@@ -130,26 +128,17 @@ export async function POST(req: Request) {
   if (!type) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
   const isPdf = type === "application/pdf";
 
-  const client = getClient();
-  if (!client) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
-
-  const dataUrl = `data:${type};base64,${Buffer.from(bytes).toString("base64")}`;
-  const fileInput: ResponseInputContent = isPdf
-    ? { type: "input_file", filename: file.name || "scorecard.pdf", file_data: dataUrl }
-    : { type: "input_image", image_url: dataUrl, detail: "high" };
+  if (!aiConfigured()) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
+  if (!allowAiRequest(req)) return sample(LIMIT_NOTICE);
 
   try {
-    const response = await client.responses.parse({
-      model: MODEL,
-      // Don't let OpenAI keep the response for later retrieval (the Responses API stores it for 30+ days by default).
-      store: false,
+    const parsed = await aiJson("api/score", ScoreOutputSchema, "scorecard", {
       instructions: SYSTEM_PROMPT,
-      input: [{ role: "user", content: [fileInput, { type: "input_text", text: "Score this shop's scorecard." }] }],
-      text: { format: zodTextFormat(ScoreOutputSchema, "scorecard") },
+      text: "Score this shop's scorecard.",
+      file: { mimeType: type, base64: Buffer.from(bytes).toString("base64"), filename: file.name || (isPdf ? "scorecard.pdf" : "scorecard") },
     });
 
-    // output_parsed is null when the model refused or the output didn't match the schema.
-    const parsed = response.output_parsed;
+    // null when the model refused or the output didn't match the schema.
     if (!parsed) return sample("The AI couldn't read this file, so we're showing the sample scorecard.");
     const metrics = normalize(parsed.metrics);
     if (!metrics.some(isScored)) {
@@ -161,14 +150,7 @@ export async function POST(req: Request) {
       other_metrics: normalizeOther(parsed.other_metrics),
       period: parsed.period ? clip(parsed.period, 60) : null,
     });
-  } catch (err) {
-    console.error("[api/score] OpenAI call failed:", err);
-    if (err instanceof OpenAI.AuthenticationError) {
-      return sample("The API key was rejected, so we're showing the sample scorecard. Check OPENAI_API_KEY in .env.");
-    }
-    if (err instanceof OpenAI.RateLimitError) {
-      return sample("The AI is busy right now, so we're showing the sample scorecard. Try again in a minute.");
-    }
+  } catch {
     return sample("We couldn't reach the AI just now, so we're showing the sample scorecard.");
   }
 }

@@ -1,8 +1,7 @@
-import OpenAI from "openai";
-import { zodTextFormat } from "openai/helpers/zod";
 import { NextResponse } from "next/server";
 import sampleFixes from "@/data/sample-fixes.json";
-import { getClient, MODEL } from "@/lib/openai";
+import { aiConfigured, aiJson } from "@/lib/ai";
+import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 import { clip } from "@/lib/text";
 import { FixesOutputSchema, FixesRequestSchema } from "@/lib/schemas";
 import type { Fix, FixesRequest, FixesResponse } from "@/lib/types";
@@ -52,20 +51,12 @@ export async function POST(req: Request) {
   const parsed = FixesRequestSchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return sample("We didn't get enough data to tailor fixes, so here are sample fixes.");
 
-  const client = getClient();
-  if (!client) return sample("AI fixes aren't set up yet (no API key), so here are sample fixes.");
+  if (!aiConfigured()) return sample("AI fixes aren't set up yet (no API key), so here are sample fixes.");
+  if (!allowAiRequest(req)) return sample(LIMIT_NOTICE);
 
   try {
-    const response = await client.responses.parse({
-      model: MODEL,
-      // Don't let OpenAI keep the response for later retrieval (the Responses API stores it for 30+ days by default).
-      store: false,
-      instructions: SYSTEM_PROMPT,
-      input: describe(parsed.data),
-      text: { format: zodTextFormat(FixesOutputSchema, "fixes") },
-    });
-
-    const fixes = response.output_parsed?.fixes;
+    const output = await aiJson("api/fixes", FixesOutputSchema, "fixes", { instructions: SYSTEM_PROMPT, text: describe(parsed.data) });
+    const fixes = output?.fixes;
     if (!fixes || fixes.length < 3) {
       return sample("The AI didn't come back with three fixes, so here are sample fixes.");
     }
@@ -79,14 +70,7 @@ export async function POST(req: Request) {
         daysSaved: Math.round(Math.min(MAX_DAYS_PER_FIX, Math.max(0, f.daysSaved)) * 10) / 10,
       })),
     });
-  } catch (err) {
-    console.error("[api/fixes] OpenAI call failed:", err);
-    if (err instanceof OpenAI.AuthenticationError) {
-      return sample("The API key was rejected, so here are sample fixes. Check OPENAI_API_KEY in .env.");
-    }
-    if (err instanceof OpenAI.RateLimitError) {
-      return sample("The AI is busy right now, so here are sample fixes. Try again in a minute.");
-    }
+  } catch {
     return sample("We couldn't reach the AI just now, so here are sample fixes.");
   }
 }
