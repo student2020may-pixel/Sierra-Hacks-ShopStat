@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import scorecardData from "@/data/scorecard.json";
 import { aiConfigured, aiJson } from "@/lib/ai";
+import { readUpload, withContents } from "@/lib/fileinput";
 import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 import { clip } from "@/lib/text";
 import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
@@ -14,20 +15,6 @@ export const maxDuration = 60;
 
 // Vercel rejects request bodies over ~4.5 MB before this code runs; the upload page shrinks photos first.
 const MAX_BYTES = 4.5 * 1024 * 1024;
-/**
- * Identifies the file from its first bytes. Browsers sometimes send no MIME type (some Android
- * pickers) or a wrong one (a renamed file), and the model needs the real type.
- */
-function sniffType(bytes: Uint8Array): string | null {
-  const ascii = (start: number, len: number) => String.fromCharCode(...bytes.subarray(start, start + len));
-  if (bytes[0] === 0x89 && ascii(1, 3) === "PNG") return "image/png";
-  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
-  if (ascii(0, 4) === "GIF8") return "image/gif";
-  if (ascii(0, 4) === "RIFF" && ascii(8, 4) === "WEBP") return "image/webp";
-  if (ascii(0, 5) === "%PDF-") return "application/pdf";
-  return null;
-}
-
 const METRIC_LIST = METRIC_KEYS.map((key) => {
   const d = METRIC_DEFS[key];
   return `- ${key}: "${d.label}", unit "${d.unit}", ${d.higherIsBetter ? "higher" : "lower"} is better`;
@@ -120,13 +107,11 @@ export async function POST(req: Request) {
   } catch {
     return badRequest("We couldn't read that upload. Please try choosing the file again.");
   }
-  if (!file || file.size === 0) return badRequest("Please choose a scorecard image or PDF to upload.");
-  if (file.size > MAX_BYTES) return badRequest("That file is over 4.5 MB. Try a screenshot or a smaller PDF.");
+  if (!file || file.size === 0) return badRequest("Please choose your scorecard file to upload.");
+  if (file.size > MAX_BYTES) return badRequest("That file is over 4.5 MB. Try a screenshot or a smaller file.");
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const type = sniffType(bytes);
-  if (!type) return badRequest("Please upload a PNG, JPG, WebP, GIF, or PDF file.");
-  const isPdf = type === "application/pdf";
+  const read = await readUpload(file);
+  if (!read.ok) return badRequest(read.error);
 
   if (!aiConfigured()) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
   if (!allowAiRequest(req)) return sample(LIMIT_NOTICE);
@@ -134,8 +119,8 @@ export async function POST(req: Request) {
   try {
     const parsed = await aiJson("api/score", ScoreOutputSchema, "scorecard", {
       instructions: SYSTEM_PROMPT,
-      text: "Score this shop's scorecard.",
-      file: { mimeType: type, base64: Buffer.from(bytes).toString("base64"), filename: file.name || (isPdf ? "scorecard.pdf" : "scorecard") },
+      text: withContents(read, file.name, "Score this shop's scorecard."),
+      file: read.file,
     });
 
     // null when the model refused or the output didn't match the schema.

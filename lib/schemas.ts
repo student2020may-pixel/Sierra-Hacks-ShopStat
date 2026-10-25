@@ -110,3 +110,17 @@ export const FixesRequestSchema = z.object({
   totalExtraDays: z.number(),
   jobCount: z.number(),
 });
+
+/** What the AI reads off a jobs PDF, photo or document. Missing numbers stay null, never guessed. */
+export const JobsExtractSchema = z.object({
+  jobs: z.array(
+    z.object({
+      jobId: z.string(),
+      laborHours: z.number().nullable(),
+      daysInShop: z.number().nullable(),
+      dateIn: z.string().nullable(),
+      dateOut: z.string().nullable(),
+      supplements: z.number().nullable(),
+    }),
+  ),
+});

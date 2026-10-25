@@ -3,10 +3,10 @@ import Reveal from "@/components/lux/Reveal";
 
 const TOWNS = ["Manteca", "Stockton", "Modesto", "Tracy", "Lodi", "Fresno"];
 const NOTES = [
-  { title: "A photo, PDF or screenshot works", body: "Use whatever your insurer sends: a PDF from the portal, a screenshot, or a photo of the printout." },
-  { title: "Repair orders as a CSV export", body: "Export last quarter's repair orders from your shop management software, or type up to 10 jobs by hand." },
+  { title: "Any file works", body: "Use whatever your insurer sends: a PDF from the portal, a screenshot, a photo of the printout, or a spreadsheet." },
+  { title: "Repair orders, any format", body: "A CSV or Excel export from your shop management software, a PDF report, a screenshot, or up to 10 jobs typed by hand." },
   // Same wording as the scorecard step (true in code: in-memory only, store: false on every OpenAI call).
-  { title: "How your file is handled", body: "Sent to OpenAI only to read the numbers, and not saved by ShopStats. Your results stay in this browser tab." },
+  { title: "How your file is handled", body: "Sent to OpenAI (or Google Gemini as a backup) only to read the numbers, and not saved by ShopStats. Your results stay in this browser tab." },
 ];
 
 export default function WhoItsFor() {
