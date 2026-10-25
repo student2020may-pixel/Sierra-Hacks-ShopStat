@@ -10,6 +10,8 @@ import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import { detectOutliers, type AnomalyResult, type Job } from "@/lib/anomaly";
 import { parseJobsCsv } from "@/lib/csv";
+import { shrinkImage } from "@/lib/image";
+import { rowsToCsv } from "@/lib/sheet";
 import { formatCount } from "@/lib/format";
 import { isJobsResult, JOBS_KEY, JOBS_SOURCE_KEY, load, loadValid, save } from "@/lib/storage";
 
@@ -38,6 +40,13 @@ function summary(result: AnomalyResult): string {
 
 const SAMPLE_LABEL = "sample jobs (Valley Auto Body)";
 const MAX_CSV_BYTES = 5 * 1024 * 1024;
+/** Vercel rejects bigger request bodies before our code runs. */
+const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
+const CLIENT_TIMEOUT_MS = 55_000;
+/** Read right here in the browser; everything else (PDFs, photos, documents) goes to the AI. */
+const TEXT_FILE = /\.(csv|tsv|txt)$/i;
+const EXCEL_FILE = /\.(xlsx|xlsm)$/i;
+const OLD_SPREADSHEET = /\.(xls|ods|numbers)$/i;
 
 export default function JobsStep() {
   const [loading, setLoading] = useState(false);
@@ -48,6 +57,8 @@ export default function JobsStep() {
   const [manual, setManual] = useState(false);
   /** Sample jobs from an earlier visit: counts as done, but isn't shown until loaded again. */
   const [savedSample, setSavedSample] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [reading, setReading] = useState(false);
 
   // Coming back to this step: restore the last result instead of starting over.
   useEffect(() => {
@@ -82,27 +93,66 @@ export default function JobsStep() {
   }
 
   async function onFile(file: File | undefined) {
-    if (!file) return;
+    if (!file || reading) return;
     setResult(null);
-    if (!/\.csv$/i.test(file.name) && file.type !== "text/csv") {
-      setError("Please upload a .csv file (export your jobs from your shop system as CSV).");
+    setNotice(null);
+    setError(null);
+    if (OLD_SPREADSHEET.test(file.name)) {
+      setError("Please save that spreadsheet as .xlsx or .csv and upload it again.");
       return;
     }
-    if (file.size > MAX_CSV_BYTES) {
-      setError("That file is over 5 MB. Export just one quarter of jobs and try again.");
+    if (TEXT_FILE.test(file.name) || EXCEL_FILE.test(file.name) || file.type === "text/csv") {
+      if (file.size > MAX_CSV_BYTES) {
+        setError("That file is over 5 MB. Export just one quarter of jobs and try again.");
+        return;
+      }
+      try {
+        if (EXCEL_FILE.test(file.name)) {
+          const { readSheet } = await import("read-excel-file/browser");
+          analyze(rowsToCsv(await readSheet(file)), file.name);
+        } else {
+          analyze(await file.text(), file.name);
+        }
+      } catch {
+        setError("We couldn't open that file. Please try again, or export it as a CSV.");
+      }
       return;
     }
+    await readWithAi(file);
+  }
+
+  /** PDFs, photos, screenshots and documents: the AI reads the job list and sends it back as CSV. */
+  async function readWithAi(file: File) {
+    setReading(true);
     try {
-      analyze(await file.text(), file.name);
+      const upload = await shrinkImage(file);
+      if (upload.size > MAX_UPLOAD_BYTES) {
+        setError("That file is over 4.5 MB. Try a screenshot of the job list or a smaller file.");
+        return;
+      }
+      const body = new FormData();
+      body.append("file", upload);
+      const res = await fetch("/api/jobs", { method: "POST", body, signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) });
+      const data = await res.json().catch(() => null);
+      if (res.status === 400 && data?.error) {
+        setError(data.error);
+      } else if (res.ok && data?.source === "ai" && typeof data.csv === "string") {
+        analyze(data.csv, file.name);
+      } else {
+        await loadSample(data?.notice ?? "Reading that file took too long or the server had a problem, so we're showing the sample jobs.");
+      }
     } catch {
-      setError("We couldn't open that file. Please try again.");
+      await loadSample("We couldn't reach the server, so we're showing the sample jobs. Check your connection and try again.");
+    } finally {
+      setReading(false);
     }
   }
 
-  async function useSample() {
+  async function loadSample(why?: string) {
     setLoading(true);
     setError(null);
     setResult(null);
+    setNotice(typeof why === "string" ? why : null);
     try {
       const res = await fetch("/api/sample-jobs");
       if (!res.ok) throw new Error();
@@ -119,24 +169,27 @@ export default function JobsStep() {
       <Progress step={2} />
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Find the jobs that dragged on</h1>
       <p className="mt-2 text-bone/70">
-        Upload a CSV of recent repair jobs. We compare each job&apos;s days in the shop to what its labor hours
+        Upload your recent repair jobs. We compare each job&apos;s days in the shop to what its labor hours
         predict and flag the ones that took far longer.
       </p>
       <p className="mt-2 text-sm text-muted">
-        Export last quarter&apos;s repair orders from your shop management software as a CSV, with job ID, labor hours,
-        and dates in and out.
+        Any file works: a CSV or Excel export from your shop management software, a PDF report, or a photo or screenshot of
+        your job list. It needs job IDs, labor hours, and days in the shop (or dates in and out).
       </p>
       <p className="mt-1 text-sm text-muted">
-        <span className="font-semibold text-bone/70">Your file:</span> read right here in your browser, not uploaded. Only the slow
-        jobs&apos; numbers are sent to OpenAI, to write your fix list and answer your questions.
+        <span className="font-semibold text-bone/70">Your file:</span> CSV and Excel files are read right here in your browser, not
+        uploaded. PDFs, photos and other files are sent to OpenAI (or Google Gemini as a backup) only to read the job list, and
+        aren&apos;t saved by ShopStats. Only the slow jobs&apos; numbers are sent on to write your fix list and answer your questions.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <label className="pressable cursor-pointer rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone">
-          Upload jobs.csv
+        <label
+          className={`pressable cursor-pointer rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone ${reading ? "pointer-events-none opacity-50" : ""}`}
+        >
+          Upload jobs file
           <input
             type="file"
-            accept=".csv,text/csv"
+            disabled={reading}
             className="sr-only"
             onChange={(e) => {
               onFile(e.target.files?.[0]);
@@ -145,16 +198,17 @@ export default function JobsStep() {
           />
         </label>
         <button
-          onClick={useSample}
-          disabled={loading}
+          onClick={() => loadSample()}
+          disabled={loading || reading}
           className="pressable rounded-full border border-white/20 bg-transparent px-5 py-3 font-semibold text-bone/85 hover:bg-white/[0.03] disabled:opacity-50"
         >
           Use sample jobs
         </button>
         {loading && <Spinner label="Loading sample jobs…" />}
+        {reading && <Spinner label="Reading your file… about 10–30 seconds." />}
       </div>
       <p className="mt-2 text-xs text-muted">
-        Columns: job_id, estimate_labor_hours, and days_in_shop or date_in and date_out (supplements optional).
+        For CSV and Excel, columns: job_id, estimate_labor_hours, and days_in_shop or date_in and date_out (supplements optional).
       </p>
       <button
         type="button"
@@ -164,16 +218,29 @@ export default function JobsStep() {
       >
         {manual ? "Hide hand entry" : "No export? Enter jobs by hand"}
       </button>
-      {manual && <ManualJobs onSubmit={(csv) => analyze(csv, "jobs entered by hand")} />}
+      {manual && (
+        <ManualJobs
+          onSubmit={(csv) => {
+            setNotice(null);
+            analyze(csv, "jobs entered by hand");
+          }}
+        />
+      )}
 
       {error && (
         <div className="mt-6 animate-enter">
           <Notice kind="error">
             {error}{" "}
-            <button onClick={useSample} className="pressable font-semibold underline">
+            <button onClick={() => loadSample()} className="pressable font-semibold underline">
               Use the sample jobs instead
             </button>
           </Notice>
+        </div>
+      )}
+
+      {notice && result && (
+        <div className="mt-6 animate-enter">
+          <Notice kind="info">{notice}</Notice>
         </div>
       )}
 
@@ -247,7 +314,7 @@ export default function JobsStep() {
 
       <StepNav
         back="/assessment/scorecard"
-        next={{ href: "/results", label: "See results", ready: (result !== null || savedSample) && !loading, hint: "Add your jobs or use the sample to continue." }}
+        next={{ href: "/results", label: "See results", ready: (result !== null || savedSample) && !loading && !reading, hint: "Add your jobs or use the sample to continue." }}
       />
     </main>
   );

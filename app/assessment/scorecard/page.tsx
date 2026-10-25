@@ -15,7 +15,6 @@ import { shrinkImage } from "@/lib/image";
 import { isScoreResult, load, loadValid, save, SCORE_FILE_KEY, SCORE_KEY } from "@/lib/storage";
 import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
 
-const ACCEPT = "image/png,image/jpeg,image/webp,image/gif,application/pdf";
 /** Matches the server limit; Vercel rejects bigger bodies before our code runs. */
 const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
 /** A little longer than the server's own 40s AI timeout. */
@@ -123,15 +122,15 @@ export default function ScorecardStep() {
       <Progress step={1} />
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Upload your insurer scorecard</h1>
       <p className="mt-2 text-bone/70">
-        Drop in a photo, screenshot, or PDF of your scorecard. We&apos;ll score each metric and explain it in plain
+        Drop in your scorecard in any format. We&apos;ll score each metric and explain it in plain
         English.
       </p>
       <p className="mt-2 text-sm text-muted">
-        Insurers send these as a PDF or through their online portal. A photo or screenshot works too.
+        Insurers send these as a PDF or through their online portal. A photo, screenshot, spreadsheet or Word document works too.
       </p>
       <p className="mt-1 text-sm text-muted">
-        <span className="font-semibold text-bone/70">Your file:</span> sent to OpenAI only to read the numbers, and not saved by
-        ShopStats. Your results stay in this browser tab.
+        <span className="font-semibold text-bone/70">Your file:</span> sent to OpenAI (or Google Gemini as a backup) only to read the
+        numbers, and not saved by ShopStats. Your results stay in this browser tab.
       </p>
 
       <label
@@ -151,7 +150,6 @@ export default function ScorecardStep() {
       >
         <input
           type="file"
-          accept={ACCEPT}
           className="sr-only"
           onChange={(e) => {
             pick(e.target.files?.[0]);
@@ -174,7 +172,7 @@ export default function ScorecardStep() {
         ) : (
           <>
             <p className="font-medium text-bone">Tap to choose a file, or drag it here</p>
-            <p className="mt-1 text-sm text-muted">PNG, JPG, WebP, GIF, or PDF · large photos are shrunk automatically</p>
+            <p className="mt-1 text-sm text-muted">PDF, photo, screenshot, Excel, Word or any other file · up to 4.5 MB</p>
           </>
         )}
       </label>
