@@ -1,6 +1,6 @@
 import Link from "next/link";
 import StatSheet from "@/components/StatSheet";
-import { sampleScorecard } from "@/lib/sample";
+import { heroMetrics } from "@/lib/hero";
 
 const HEADLINE = ["Get", "families", "back", "on", "the", "road"];
 
@@ -34,14 +34,14 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* In place of a photo: the product itself, the stat sheet for the fictional sample shop, with a slow zoom. */}
+        {/* In place of a photo: the product itself, a stat sheet for an example shop (not the sample report), with a slow zoom. */}
         <figure className="rise-word mx-auto w-full max-w-md lg:max-w-none" style={{ ["--i" as string]: 4 }}>
           <div className="overflow-hidden rounded-3xl border border-line bg-night-2 p-3 shadow-2xl shadow-black/60">
             <div className="slow-zoom">
-              <StatSheet metrics={sampleScorecard.metrics} />
+              <StatSheet metrics={heroMetrics} />
             </div>
           </div>
-          <figcaption className="mt-3 text-center text-xs tracking-[0.2em] text-muted uppercase">{sampleScorecard.shop.name} · sample</figcaption>
+          <figcaption className="mt-3 text-center text-xs tracking-[0.2em] text-muted uppercase">Example shop · illustration</figcaption>
         </figure>
       </div>
 
