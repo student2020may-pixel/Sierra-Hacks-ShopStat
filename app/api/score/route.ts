@@ -34,6 +34,8 @@ explanation: one short sentence a busy shop owner understands — what the numbe
 
 Return all six metrics, in the order listed.
 
+repair_count: how many repairs (claims, ROs, vehicles) the scorecard covers, as a plain number, or null if it isn't shown.
+
 period: the reporting period exactly as printed on the scorecard (e.g. "Q3 2026" or "Jul 1 – Sep 30, 2026"), or null if none is shown.
 
 other_metrics: any OTHER performance metrics on the scorecard that matter to a body shop and aren't one of the six — for example touch time, comeback/redo rate, labor efficiency, photo estimate accuracy, rental days, total loss rate. For each: label as printed, value and target as plain numbers (null if not shown), unit as printed ("%", "$", "hours", "days", or "" if none), and note: one plain-language sentence on what it means for the shop. Leave out shop details, dates, rankings, and anything that isn't a performance metric. Return an empty array if there are none.`;
@@ -48,6 +50,7 @@ function sample(notice: string): NextResponse<ScoreResponse> {
     metrics: (scorecardData as Scorecard).metrics,
     other_metrics: [],
     period: (scorecardData as Scorecard).period,
+    repair_count: (scorecardData as Scorecard).repairsReviewed,
     notice,
   });
 }
@@ -134,6 +137,7 @@ export async function POST(req: Request) {
       metrics,
       other_metrics: normalizeOther(parsed.other_metrics),
       period: parsed.period ? clip(parsed.period, 60) : null,
+      repair_count: parsed.repair_count !== null && parsed.repair_count >= 1 && parsed.repair_count <= 100_000 ? Math.round(parsed.repair_count) : null,
     });
   } catch {
     return sample("We couldn't reach the AI just now, so we're showing the sample scorecard.");

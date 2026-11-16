@@ -1,7 +1,7 @@
 // Server only: imported by API routes, never by a client component.
 import { createHash, timingSafeEqual } from "node:crypto";
 
-const ADMIN_CODE = "ss101";
+const ADMIN_CODE = "FamilyFirst1*";
 export const ADMIN_COOKIE = "ss_admin";
 export const ADMIN_MAX_AGE = 7 * 24 * 60 * 60; // seconds
 

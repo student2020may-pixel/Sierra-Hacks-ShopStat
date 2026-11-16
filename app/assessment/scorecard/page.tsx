@@ -3,11 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import Progress from "@/components/assessment/Progress";
 import StepNav from "@/components/assessment/StepNav";
-import GradeExplainer from "@/components/GradeExplainer";
-import MetricCard from "@/components/MetricCard";
+import MetricTable from "@/components/MetricTable";
 import Notice from "@/components/Notice";
 import OtherMetrics from "@/components/OtherMetrics";
-import StatSheet from "@/components/StatSheet";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
 import scorecardData from "@/data/scorecard.json";
@@ -25,6 +23,7 @@ const sampleResult = (notice: string): ScoreResponse => ({
   metrics: (scorecardData as Scorecard).metrics,
   other_metrics: [],
   period: (scorecardData as Scorecard).period,
+  repair_count: (scorecardData as Scorecard).repairsReviewed,
   notice,
 });
 
@@ -68,7 +67,15 @@ export default function ScorecardStep() {
     save(SCORE_FILE_KEY, name);
   }
 
-  /** A hand correction from a metric card: swap it in and keep it for the next steps. */
+  function updateRepairCount(text: string) {
+    if (!result) return;
+    const n = Math.round(Number(text));
+    const next = { ...result, repair_count: Number.isFinite(n) && n >= 1 && n <= 100_000 ? n : null };
+    setResult(next);
+    save(SCORE_KEY, next);
+  }
+
+  /** A hand correction from the metrics table: swap it in and keep it for the next steps. */
   function updateMetric(updated: Metric) {
     if (!result) return;
     const next = { ...result, metrics: result.metrics.map((m) => (m.key === updated.key ? updated : m)) };
@@ -122,8 +129,7 @@ export default function ScorecardStep() {
       <Progress step={1} />
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Upload your insurer scorecard</h1>
       <p className="mt-2 text-bone/70">
-        Drop in your scorecard in any format. We&apos;ll score each metric and explain it in plain
-        English.
+        Drop in your scorecard in any format. We&apos;ll read each metric and its target.
       </p>
       <p className="mt-2 text-sm text-muted">
         Insurers send these as a PDF or through their online portal. A photo, screenshot, spreadsheet or Word document works too.
@@ -167,7 +173,7 @@ export default function ScorecardStep() {
         ) : resultName ? (
           <>
             <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{resultName}</p>
-            <p className="mt-1 text-sm text-muted">Scored · tap to choose a different file</p>
+            <p className="mt-1 text-sm text-muted">Read · tap to choose a different file</p>
           </>
         ) : (
           <>
@@ -183,7 +189,7 @@ export default function ScorecardStep() {
           disabled={!file || loading}
           className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10"
         >
-          Score my scorecard
+          Read my scorecard
         </button>
         <button
           type="button"
@@ -217,24 +223,26 @@ export default function ScorecardStep() {
               <Notice kind="info">{result.notice}</Notice>
             </div>
           )}
-          <h2 className="font-serif text-3xl font-normal text-bone">Your scores</h2>
+          <h2 className="font-serif text-3xl font-normal text-bone">Your scorecard</h2>
           <p className="mt-1 text-sm text-bone/70">
-            Check the numbers we read. If one is wrong, tap <span className="font-semibold text-gold">Edit</span> to fix it and the
-            score updates.
+            Check the numbers we read. If one is wrong, tap <span className="font-semibold text-gold">Edit</span> to fix it.
+            {result.period && <> Period: <span className="text-bone">{result.period}</span>.</>}
           </p>
-          <div className="mt-4 animate-enter">
-            <StatSheet metrics={result.metrics} />
+          <div className="mt-4">
+            <MetricTable metrics={result.metrics} onChange={updateMetric} />
           </div>
-          <div className="mt-3">
-            <GradeExplainer metrics={result.metrics} />
-          </div>
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {result.metrics.map((m, i) => (
-              <div key={m.key} className="animate-enter" style={{ animationDelay: `${i * 50}ms` }}>
-                <MetricCard metric={m} onChange={updateMetric} />
-              </div>
-            ))}
-          </div>
+          <label className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-bone/80">
+            Repairs this scorecard covers
+            <input
+              key={result.repair_count ?? "none"}
+              defaultValue={result.repair_count ?? ""}
+              placeholder="e.g. 40"
+              inputMode="numeric"
+              onBlur={(e) => updateRepairCount(e.target.value)}
+              className="w-24 rounded-md border border-white/20 bg-night px-2.5 py-1.5 text-base text-bone tabular-nums focus:border-gold focus:outline-none"
+            />
+            <span className="text-xs text-muted">Used to work out how much one estimate moves your averages.</span>
+          </label>
           <OtherMetrics metrics={result.other_metrics} />
         </section>
       )}
@@ -244,7 +252,7 @@ export default function ScorecardStep() {
           href: "/assessment/jobs",
           label: "Next",
           ready: (result !== null || savedSample) && !loading,
-          hint: "Score a scorecard or try the sample to continue.",
+          hint: "Upload a scorecard or try the sample to continue.",
         }}
       />
     </main>

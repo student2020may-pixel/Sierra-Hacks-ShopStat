@@ -1,4 +1,4 @@
-const STEPS = ["Insurer scorecard", "Recent jobs", "Your results"];
+const STEPS = ["Scorecard", "Your last cars", "Grade an estimate"];
 
 /** "Step 1 of 3" header with a segmented bar; done and current steps fill in. */
 export default function Progress({ step }: { step: 1 | 2 | 3 }) {

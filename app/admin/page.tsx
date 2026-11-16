@@ -1,8 +1,15 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import Notice from "@/components/Notice";
 import Spinner from "@/components/Spinner";
+
+/** Where to go after unlocking: the page that sent us here, if it's one of ours. */
+function nextPath(): string {
+  const next = new URLSearchParams(window.location.search).get("next");
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : "/";
+}
 
 export default function AdminPage() {
   const [unlocked, setUnlocked] = useState<boolean | null>(null);
@@ -30,8 +37,9 @@ export default function AdminPage() {
       });
       const data = await res.json().catch(() => null);
       if (res.ok && data?.unlocked) {
-        setUnlocked(true);
-        setCode("");
+        // Full navigation, so the server sees the new cookie.
+        window.location.assign(nextPath());
+        return;
       } else {
         setError(data?.error ?? "Wrong code.");
       }
@@ -58,10 +66,8 @@ export default function AdminPage() {
   return (
     <main className="px-safe mx-auto max-w-md pt-12 pb-24">
       <p className="text-xs tracking-[0.25em] text-gold uppercase">Admin</p>
-      <h1 className="mt-4 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Unlock live analyses</h1>
-      <p className="mt-3 text-bone/70">
-        Visitors get 2 free live AI analyses a day. With the admin code, this browser gets unlimited ones for 7 days.
-      </p>
+      <h1 className="mt-4 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Enter the access code</h1>
+      <p className="mt-3 text-bone/70">ShopStats is private for now. The code unlocks it on this browser for 7 days.</p>
 
       {unlocked === null ? (
         <div className="mt-8">
@@ -69,10 +75,15 @@ export default function AdminPage() {
         </div>
       ) : unlocked ? (
         <div className="mt-8 space-y-4 animate-enter">
-          <Notice kind="info">Unlocked: unlimited live analyses on this browser.</Notice>
-          <button type="button" onClick={lock} disabled={busy} className="btn-lux disabled:opacity-50">
-            Lock
-          </button>
+          <Notice kind="info">Unlocked on this browser.</Notice>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/assessment/scorecard" className="btn-lux btn-lux-solid">
+              Start <span className="arrow" aria-hidden>→</span>
+            </Link>
+            <button type="button" onClick={lock} disabled={busy} className="btn-lux disabled:opacity-50">
+              Lock
+            </button>
+          </div>
         </div>
       ) : (
         <form onSubmit={unlock} className="mt-8 space-y-4">
