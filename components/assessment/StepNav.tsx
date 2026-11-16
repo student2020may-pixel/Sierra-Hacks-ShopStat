@@ -2,7 +2,8 @@ import Link from "next/link";
 
 interface Props {
   back?: string;
-  next: { href: string; label: string; ready: boolean; hint: string };
+  /** Left out on the last step. */
+  next?: { href: string; label: string; ready: boolean; hint: string };
 }
 
 /**
@@ -20,20 +21,22 @@ export default function StepNav({ back, next }: Props) {
         ) : (
           <span />
         )}
-        <div className="flex min-w-0 items-center gap-3">
-          {!next.ready && <p className="hidden text-right text-sm text-muted sm:block">{next.hint}</p>}
-          {next.ready ? (
-            <Link href={next.href} className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone">
-              {next.label} →
-            </Link>
-          ) : (
-            <button type="button" disabled className="cursor-not-allowed rounded-full bg-white/10 px-5 py-3 font-semibold text-muted" title={next.hint}>
-              {next.label} →
-            </button>
-          )}
-        </div>
+        {next && (
+          <div className="flex min-w-0 items-center gap-3">
+            {!next.ready && <p className="hidden text-right text-sm text-muted sm:block">{next.hint}</p>}
+            {next.ready ? (
+              <Link href={next.href} className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone">
+                {next.label} →
+              </Link>
+            ) : (
+              <button type="button" disabled className="cursor-not-allowed rounded-full bg-white/10 px-5 py-3 font-semibold text-muted" title={next.hint}>
+                {next.label} →
+              </button>
+            )}
+          </div>
+        )}
       </div>
-      {!next.ready && <p className="mt-2 text-center text-xs text-muted sm:hidden">{next.hint}</p>}
+      {next && !next.ready && <p className="mt-2 text-center text-xs text-muted sm:hidden">{next.hint}</p>}
     </div>
   );
 }

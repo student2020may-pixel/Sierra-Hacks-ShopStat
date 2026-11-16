@@ -61,54 +61,10 @@ export const ExtractedMetricSchema = z.object({
 export const ScoreOutputSchema = z.object({
   /** The reporting period as printed (e.g. "Q3 2026"), or null if the scorecard doesn't show one. */
   period: z.string().nullable(),
+  /** How many repairs the scorecard covers, if printed. One estimate's impact depends on it. */
+  repair_count: z.number().nullable(),
   metrics: z.array(ExtractedMetricSchema),
   other_metrics: z.array(OtherMetricSchema),
-});
-
-export const FixSchema = z.object({
-  title: z.string(),
-  explanation: z.string(),
-  /** Estimated days off the shop's average cycle time per car. */
-  daysSaved: z.number(),
-  /** The flagged jobs or weak metrics this fix is based on, e.g. "VAB-1038, VAB-1022 · Supplement rate". */
-  basedOn: z.string(),
-  /** Which of the six metrics this fix should improve, so it can be shown next to them. */
-  metrics: z.array(z.enum(METRIC_KEYS)),
-});
-
-/** What the model must return for /api/fixes. */
-export const FixesOutputSchema = z.object({
-  fixes: z.array(FixSchema),
-});
-
-const FlaggedJobSchema = z.object({
-  jobId: z.string(),
-  laborHours: z.number(),
-  daysInShop: z.number(),
-  expectedDays: z.number(),
-  extraDays: z.number(),
-  supplements: z.number(),
-});
-
-/** Body of POST /api/ask: the question plus only this shop's own data. */
-export const AskRequestSchema = z.object({
-  question: z.string().trim().min(1).max(300),
-  metrics: z.array(MetricSchema).max(6),
-  /** The worst slow jobs (a big file can flag hundreds; the page sends the top 50). */
-  flagged: z.array(FlaggedJobSchema).max(50),
-  /** How many jobs were flagged in total, which can be more than flagged.length. */
-  flaggedCount: z.number(),
-  totalExtraDays: z.number(),
-  jobCount: z.number(),
-  fixes: z.array(FixSchema).max(3),
-});
-
-/** Body of POST /api/fixes. */
-export const FixesRequestSchema = z.object({
-  metrics: z.array(MetricSchema).min(1).max(12),
-  flagged: z.array(FlaggedJobSchema).max(100),
-  totalExtraDays: z.number(),
-  jobCount: z.number(),
 });
 
 /** What the AI reads off a jobs PDF, photo or document. Missing numbers stay null, never guessed. */
@@ -123,4 +79,33 @@ export const JobsExtractSchema = z.object({
       supplements: z.number().nullable(),
     }),
   ),
+});
+
+export const PART_TYPES = ["oem", "aftermarket", "used", "reman", "unknown"] as const;
+
+/**
+ * What the AI reads off an estimate for /api/estimate. Customer details (name, phone, address, VIN,
+ * plate) are deliberately not part of it.
+ */
+export const EstimateExtractSchema = z.object({
+  vehicle: z.string().nullable(),
+  insurer: z.string().nullable(),
+  /** Grand total of the estimate in dollars. */
+  total: z.number().nullable(),
+  bodyHours: z.number().nullable(),
+  refinishHours: z.number().nullable(),
+  frameHours: z.number().nullable(),
+  mechanicalHours: z.number().nullable(),
+  parts: z.array(
+    z.object({
+      description: z.string(),
+      price: z.number().nullable(),
+      type: z.enum(PART_TYPES),
+    }),
+  ),
+  sublets: z.array(z.object({ description: z.string(), price: z.number().nullable() })),
+  /** True when the estimate is preliminary or written from photos only (no teardown yet). */
+  preliminary: z.boolean(),
+  /** Short phrases for signs of damage that usually isn't visible until teardown. */
+  hiddenDamageSigns: z.array(z.string()),
 });

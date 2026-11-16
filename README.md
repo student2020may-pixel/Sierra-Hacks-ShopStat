@@ -1,101 +1,62 @@
 # ShopStats
 
-ShopStats helps independent auto body shops see what's slowing down their repairs. A three-step shop
-assessment takes an insurer scorecard and a jobs export, scores each metric, flags the jobs that dragged
-on, and suggests the top three changes to cut repair time.
+ShopStats grades a repair estimate against a body shop's insurer scorecard: upload the scorecard, your
+last cars, then any estimate, and see how that one job would move each scorecard metric.
 
-Built at Sierra Hacks 2026 by Ishaan Bhatnagar and Sidhak Makkar.
+Built by Ishaan Bhatnagar and Sidhak Makkar.
 
 ## Run it
 
 ```bash
 npm install
-cp .env.example .env   # then add your OpenAI key
+cp .env.example .env   # then add your keys
 npm run dev
 ```
 
-`OPENAI_API_KEY` is the only setting. Without it the app still works on sample data, and each page
-says so. `.env` is gitignored, so never commit it.
+- `OPENAI_API_KEY`: reads scorecards, job lists and estimates.
+- `Gemini_API_Key_2`: backup when OpenAI fails or runs out of credits (`lib/ai.ts`).
 
-## Pages
+Without either key the app still works on sample data, and each page says so. `.env` is gitignored, so
+never commit it.
+
+## Access
+
+The whole app is private for now. `middleware.ts` sends anyone without the admin cookie to `/admin`,
+where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly cookie. API routes return
+401 without it.
+
+## Pipeline
 
 | Page | What it does |
 | --- | --- |
-| `/assessment/scorecard` | **Step 1 of 3.** Upload a scorecard image or PDF (or try the sample). The AI reads each metric's value and target; scores are computed in code (below). |
-| `/assessment/jobs` | **Step 2 of 3.** Upload a jobs CSV, enter up to 10 jobs by hand, or use the sample. Flags jobs that took far longer than their labor hours predict. |
-| `/results` | **Step 3 of 3.** Stat sheet, top 3 AI fixes, a before/after estimate, and **Ask ShopStats** for questions about your own data. |
-| `/mock-scorecard` | A fictional insurer scorecard for demos. |
+| `/assessment/scorecard` | **Step 1.** Upload the insurer scorecard in any format. The AI reads each metric's value and target, and how many repairs the card covers. Every number can be edited. |
+| `/assessment/jobs` | **Step 2.** Upload your last cars: CSV or Excel (read in the browser), or a PDF, photo or screenshot (read by the AI). Flags jobs that took far longer than their labor hours predict. |
+| `/assessment/estimate` | **Step 3.** Upload any estimate. The AI reads the repair lines; the grade and impact are computed in code. |
+| `/mock-scorecard` | A fictional insurer scorecard for testing. |
 
-Each step's result is kept in the browser tab, so Back and Next don't lose work. The old `/upload` and
-`/jobs` links redirect to steps 1 and 2. A jobs CSV needs a job ID, labor hours, and either a days-in-shop
-column or dates in and out.
+## How an estimate is graded
 
-## How scores are computed
+[`lib/impact.ts`](lib/impact.ts) does the math; the AI only reads the estimate.
 
-The AI only **reads** numbers off the scorecard (plus a one-line explanation of each). Every 0–100
-score is computed by a fixed formula in [`lib/scoring.ts`](lib/scoring.ts), so the same scorecard
-always gets the same scores.
-
-1. Measure how far the shop is from target as a fraction of the target, in the direction that
-   matters. For lower-is-better metrics (cycle time, repair cost, supplement rate), being above target
-   is a miss; for higher-is-better metrics (satisfaction, alternate parts, on-time delivery), being
-   below target is a miss.
-2. **Meets or beats target:** 85, plus up to 15 more points scaled by how far past target. 20% better
-   than target or more scores 100.
-3. **Misses target:** the score falls along straight lines through these points:
-
-   | Miss | Score |
-   | --- | --- |
-   | just under 0% | 84 |
-   | 10% | 70 |
-   | 30% | 40 |
-   | 60% | 10 |
-   | 120% or worse | 0 |
-
-Example: a cycle time of 11.8 days against a 7.5-day target is a 57% miss, which scores 13.
-
-Metrics that aren't on the scorecard, or that come back as impossible values (a 142% rate, a
-1,000-day cycle time), score nothing and are left off the charts.
-
-The **shop level** is the average score of the metrics that were on the scorecard; the letter grade
-is A (90+), B (80+), C (70+), D (60+), F (below 60).
-
-## How slow jobs are found
-
-[`lib/anomaly.ts`](lib/anomaly.ts) fits "expected days in shop" against labor hours with a robust line
-(Theil–Sen), then flags jobs whose extra days are far above normal (median/MAD z-score over 3.5 and at
-least 3 extra days). It's deterministic, so the same file flags the same jobs every time.
-
-## What's AI and what isn't
-
-- **AI (`gpt-5.4-mini`):** reading values and targets off the scorecard, the one-line explanations, the
-  top 3 fixes and their "days saved" estimates, and Ask ShopStats answers. Ask ShopStats only sees this
-  shop's scorecard, slow jobs, and fixes, and is told to say "I can't tell from your data" otherwise.
-- **Code:** every score, the shop level, slow-job detection, and the car-days total.
-- **Fallbacks:** if the AI is unavailable, the app shows the sample scorecard or sample fixes with a
-  note, and Ask ShopStats answers its suggested questions directly from the numbers.
+- **This job's numbers:** repair cost and the share of alternate parts come straight from the estimate.
+  Days in the shop come from the line fitted to your last cars in step 2 (or a general rule without
+  them), plus half a day per sublet. The chance of a supplement starts from your own past share of
+  supplemented jobs and rises for preliminary estimates, signs of hidden damage and frame work.
+- **Effect on the scorecard:** each metric is an average over the repairs the card covers, so with `n`
+  repairs this job moves it to `(value × n + this job) / (n + 1)`.
+- **Grade:** how many of this job's own numbers meet the insurer's targets: all of them is an A, 75%+
+  a B, 50%+ a C, 25%+ a D, below that an F.
+- **Ways to protect your score:** fixed rules (tear down first, order parts at teardown, offer
+  alternate parts where allowed and disclosed). It never suggests cutting a needed repair.
 
 ## Your data
 
-- **Scorecard file:** sent from the server to OpenAI to read the numbers, held in memory only, never
-  written to disk or a database. Requests use `store: false` so OpenAI doesn't keep the response for
-  later retrieval (OpenAI's own retention policy for abuse monitoring still applies).
-- **Jobs CSV:** read in the browser and never uploaded. Only the slow jobs' numbers (job ID, labor
-  hours, days, supplements) are sent to OpenAI for the fix list and Ask ShopStats.
-- **Results:** kept in the browser tab's session storage, cleared when the tab closes.
-
-## Landing page gallery
-
-The gallery uses real screenshots of the app. To refresh them after a UI change:
-
-```bash
-npm run build && npm start          # in one terminal
-node scripts/gallery-shots.mjs      # in another (needs Playwright)
-```
-
-This writes `public/gallery/*.jpg` and `data/gallery.json`.
+- **Files** are sent to OpenAI (or Gemini as a backup) only to read the numbers, held in memory, and
+  never written to disk or a database. OpenAI requests use `store: false`.
+- **Estimates** aren't saved anywhere, not even in the browser. The AI is told to skip customer names,
+  phone numbers, addresses, VINs and plates.
+- **Scorecard and jobs results** stay in the browser tab's session storage, cleared when it closes.
 
 ## Data
 
-`data/scorecard.json` and `data/jobs.csv` describe **Valley Auto Body, a fictional shop** used for
-demos. Worst-case test files live in `fixtures/worst-case/`.
+`data/scorecard.json`, `data/jobs.csv` and `data/sample-estimate.json` are fictional sample data.

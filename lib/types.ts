@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { AskRequestSchema, FixesRequestSchema, FixSchema, MetricSchema, OtherMetricSchema } from "./schemas";
+import type { EstimateExtractSchema, MetricSchema, OtherMetricSchema } from "./schemas";
 
 export type Metric = z.infer<typeof MetricSchema>;
 export type MetricKey = Metric["key"];
@@ -29,17 +29,17 @@ export interface ScoreResponse {
   other_metrics: OtherMetric[];
   /** Reporting period printed on the scorecard, if any. */
   period?: string | null;
+  /** Number of repairs the scorecard covers, if printed. */
+  repair_count?: number | null;
   /** Friendly note shown when source is "sample". */
   notice?: string;
 }
 
-export type Fix = z.infer<typeof FixSchema>;
-export type FixesRequest = z.infer<typeof FixesRequestSchema>;
-export type AskRequest = z.infer<typeof AskRequestSchema>;
+export type Estimate = z.infer<typeof EstimateExtractSchema>;
 
-/** Response body of POST /api/fixes. */
-export interface FixesResponse {
+/** Response body of POST /api/estimate. */
+export interface EstimateResponse {
   source: "ai" | "sample";
-  fixes: Fix[];
+  estimate: Estimate;
   notice?: string;
 }

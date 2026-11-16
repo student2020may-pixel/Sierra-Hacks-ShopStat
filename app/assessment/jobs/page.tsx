@@ -179,7 +179,7 @@ export default function JobsStep() {
       <p className="mt-1 text-sm text-muted">
         <span className="font-semibold text-bone/70">Your file:</span> CSV and Excel files are read right here in your browser, not
         uploaded. PDFs, photos and other files are sent to OpenAI (or Google Gemini as a backup) only to read the job list, and
-        aren&apos;t saved by ShopStats. Only the slow jobs&apos; numbers are sent on to write your fix list and answer your questions.
+        aren&apos;t saved by ShopStats.
       </p>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -314,7 +314,7 @@ export default function JobsStep() {
 
       <StepNav
         back="/assessment/scorecard"
-        next={{ href: "/results", label: "See results", ready: (result !== null || savedSample) && !loading && !reading, hint: "Add your jobs or use the sample to continue." }}
+        next={{ href: "/assessment/estimate", label: "Next", ready: (result !== null || savedSample) && !loading && !reading, hint: "Add your jobs or use the sample to continue." }}
       />
     </main>
   );
