@@ -46,6 +46,11 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
   repairs this job moves it to `(value × n + this job) / (n + 1)`.
 - **Grade:** how many of this job's own numbers meet the insurer's targets: all of them is an A, 75%+
   a B, 50%+ a C, 25%+ a D, below that an F.
+- **Photo check (optional):** add up to 8 damage photos and they go to the AI with the estimate in
+  one request. It lists damage it can see that no line covers ("missing"), lines for areas that look
+  undamaged ("unsupported"), and repair-vs-replace calls the photos disagree with, each with its photo
+  number and a severity. The photo accuracy grade is computed in code (missing items cost most), and
+  each missed item raises the predicted chance of a supplement.
 - **Ways to protect your score:** fixed rules (tear down first, order parts at teardown, offer
   alternate parts where allowed and disclosed). It never suggests cutting a needed repair.
 
@@ -53,7 +58,7 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
 
 - **Files** are sent to OpenAI (or Gemini as a backup) only to read the numbers, held in memory, and
   never written to disk or a database. OpenAI requests use `store: false`.
-- **Estimates** aren't saved anywhere, not even in the browser. The AI is told to skip customer names,
+- **Estimates and damage photos** aren't saved anywhere, not even in the browser. The AI is told to skip customer names,
   phone numbers, addresses, VINs and plates.
 - **Scorecard and jobs results** stay in the browser tab's session storage, cleared when it closes.
 

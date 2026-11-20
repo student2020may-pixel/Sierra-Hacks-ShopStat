@@ -2,7 +2,7 @@ import type { AnomalyResult } from "./anomaly";
 import { meetsTarget } from "./format";
 import { scoreMetric } from "./scoring";
 import { metricStatus, type Status } from "./status";
-import { isScored, type Estimate, type Metric, type MetricKey, type ScoredMetric } from "./types";
+import { isScored, type Estimate, type Metric, type MetricKey, type PhotoReview, type ScoredMetric } from "./types";
 
 /**
  * How one estimate would move the shop's scorecard. Each scorecard metric is an average over the
@@ -85,17 +85,19 @@ function altPartsShare(e: Estimate): number | null {
   return (known.filter((p) => p.type !== "oem").length / known.length) * 100;
 }
 
-function supplementChance(e: Estimate, history: AnomalyResult | null): number {
+function supplementChance(e: Estimate, history: AnomalyResult | null, missedItems: number): number {
   // The shop's own share of jobs that needed a supplement, when step 2 has it.
   const withSupplements = history?.jobs.filter((j) => j.supplements > 0).length ?? 0;
   let chance = history && history.jobs.length >= 10 ? withSupplements / history.jobs.length : 0.25;
   if (e.preliminary) chance += 0.3;
   chance += Math.min(0.3, e.hiddenDamageSigns.length * 0.1);
   if ((e.frameHours ?? 0) > 0) chance += 0.1;
+  // Damage the photos show but the estimate doesn't is a supplement waiting to happen.
+  chance += Math.min(0.45, missedItems * 0.15);
   return clamp(chance, 0.05, 0.9);
 }
 
-export function predictJob(e: Estimate, history: AnomalyResult | null): JobPrediction {
+export function predictJob(e: Estimate, history: AnomalyResult | null, missedItems = 0): JobPrediction {
   const hours = laborHours(e);
   const subletDays = Math.min(MAX_SUBLET_DAYS, e.sublets.length * DAYS_PER_SUBLET);
   const days =
@@ -104,7 +106,7 @@ export function predictJob(e: Estimate, history: AnomalyResult | null): JobPredi
       : (history
           ? history.fit.baseDays + history.fit.daysPerLaborHour * hours
           : FALLBACK_DAYS_BASE + hours / FALLBACK_HOURS_PER_DAY) + subletDays;
-  const supplement = supplementChance(e, history);
+  const supplement = supplementChance(e, history, missedItems);
   const late = clamp(0.1 + Math.min(0.3, e.sublets.length * 0.1) + (e.parts.length > 15 ? 0.1 : 0) + supplement * 0.3, 0.05, 0.9);
   return {
     laborHours: hours,
@@ -180,9 +182,10 @@ function suggestionsFor(e: Estimate, job: JobPrediction, metrics: ScoredMetric[]
   return out.slice(0, 3);
 }
 
-export function estimateImpact(metrics: Metric[], e: Estimate, history: AnomalyResult | null, repairCount: number): Impact {
+export function estimateImpact(metrics: Metric[], e: Estimate, history: AnomalyResult | null, repairCount: number, photoReview?: PhotoReview): Impact {
   const n = Math.max(1, Math.round(repairCount));
-  const job = predictJob(e, history);
+  const missed = photoReview?.findings.filter((f) => f.kind === "missing").length ?? 0;
+  const job = predictJob(e, history, missed);
   const scored = metrics.filter(isScored);
 
   let meets = 0;
@@ -212,5 +215,38 @@ export function estimateImpact(metrics: Metric[], e: Estimate, history: AnomalyR
 
   const ratio = checked ? meets / checked : 0;
   const grade = GRADES.find(([min]) => ratio >= min)?.[1] ?? "F";
-  return { grade, meets, checked, repairCount: n, job, metrics: impacts, suggestions: suggestionsFor(e, job, scored) };
+  // Damage the photos show but the estimate misses is the most direct fix, so it goes first.
+  const addMissed: Suggestion[] = missed
+    ? [
+        {
+          title: "Add what the photos show",
+          detail: `The photos show ${missed} item${missed === 1 ? "" : "s"} the estimate doesn't cover (see the photo check). Adding ${missed === 1 ? "it" : "them"} now avoids a supplement later.`,
+        },
+      ]
+    : [];
+  const suggestions = [...addMissed, ...suggestionsFor(e, job, scored)].slice(0, 3);
+  return { grade, meets, checked, repairCount: n, job, metrics: impacts, suggestions };
+}
+
+/**
+ * Accuracy grade from the photo check: each finding costs points by kind and severity. Missed damage
+ * costs most, because it turns into a supplement and a late car. Null when the photos didn't show the
+ * damage clearly enough to compare.
+ */
+const FINDING_POINTS = {
+  missing: { high: 3, medium: 2, low: 1 },
+  unsupported: { high: 2, medium: 1, low: 0.5 },
+  repair_or_replace: { high: 1.5, medium: 1, low: 0.5 },
+} as const;
+const ACCURACY_GRADES: [number, Impact["grade"]][] = [
+  [0, "A"],
+  [2, "B"],
+  [4, "C"],
+  [7, "D"],
+];
+
+export function photoGrade(review: PhotoReview): { grade: Impact["grade"]; points: number } | null {
+  if (!review.photosShowDamage) return null;
+  const points = review.findings.reduce((sum, f) => sum + FINDING_POINTS[f.kind][f.severity], 0);
+  return { grade: ACCURACY_GRADES.find(([max]) => points <= max)?.[1] ?? "F", points };
 }

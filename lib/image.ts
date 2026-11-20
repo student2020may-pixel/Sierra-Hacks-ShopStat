@@ -4,12 +4,15 @@
 const MAX_DIMENSION = 2000;
 const RESIZE_ABOVE_BYTES = 1.5 * 1024 * 1024;
 
-/** Returns a smaller JPEG for large images; returns the original file if it's small, not an image, or can't be decoded. */
-export async function shrinkImage(file: File): Promise<File> {
-  if (!file.type.startsWith("image/") || file.type === "image/gif" || file.size <= RESIZE_ABOVE_BYTES) return file;
+/**
+ * Returns a smaller JPEG for large images; returns the original file if it's small, not an image, or
+ * can't be decoded. Damage photos use tighter limits so several fit in one request with the estimate.
+ */
+export async function shrinkImage(file: File, { maxDimension = MAX_DIMENSION, resizeAbove = RESIZE_ABOVE_BYTES } = {}): Promise<File> {
+  if (!file.type.startsWith("image/") || file.type === "image/gif" || file.size <= resizeAbove) return file;
   try {
     const bitmap = await createImageBitmap(file);
-    const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height));
+    const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
     const canvas = document.createElement("canvas");
     canvas.width = Math.round(bitmap.width * scale);
     canvas.height = Math.round(bitmap.height * scale);
