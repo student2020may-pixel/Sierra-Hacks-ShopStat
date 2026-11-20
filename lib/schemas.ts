@@ -63,6 +63,8 @@ export const ScoreOutputSchema = z.object({
   period: z.string().nullable(),
   /** How many repairs the scorecard covers, if printed. One estimate's impact depends on it. */
   repair_count: z.number().nullable(),
+  /** The insurance company that issued the scorecard, if shown. */
+  insurer: z.string().nullable(),
   metrics: z.array(ExtractedMetricSchema),
   other_metrics: z.array(OtherMetricSchema),
 });

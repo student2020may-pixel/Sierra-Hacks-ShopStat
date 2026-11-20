@@ -12,6 +12,14 @@ export function save<T>(key: string, value: T): void {
   }
 }
 
+export function remove(key: string): void {
+  try {
+    sessionStorage.removeItem(key);
+  } catch {
+    // Nothing to clean up if storage is blocked.
+  }
+}
+
 export function load<T>(key: string): T | null {
   try {
     const raw = sessionStorage.getItem(key);

@@ -20,7 +20,8 @@ export interface AiFile {
 interface Prompt {
   instructions: string;
   text: string;
-  file?: AiFile;
+  /** Images and PDFs, in the order the prompt refers to them. */
+  files?: AiFile[];
 }
 
 const hasGemini = () => Boolean(process.env.Gemini_API_Key_2);
@@ -30,18 +31,18 @@ function gemini(timeout: number) {
   return { ai: new GoogleGenAI({ apiKey: process.env.Gemini_API_Key_2 }), config: { httpOptions: { timeout } } };
 }
 
-function geminiParts({ text, file }: Prompt): Part[] {
-  return file ? [{ inlineData: { mimeType: file.mimeType, data: file.base64 } }, { text }] : [{ text }];
+function geminiParts({ text, files = [] }: Prompt): Part[] {
+  return [...files.map((f) => ({ inlineData: { mimeType: f.mimeType, data: f.base64 } })), { text }];
 }
 
-function openaiContent({ text, file }: Prompt): ResponseInputContent[] {
-  if (!file) return [{ type: "input_text", text }];
-  const dataUrl = `data:${file.mimeType};base64,${file.base64}`;
-  const fileInput: ResponseInputContent =
-    file.mimeType === "application/pdf"
-      ? { type: "input_file", filename: file.filename, file_data: dataUrl }
+function openaiContent({ text, files = [] }: Prompt): ResponseInputContent[] {
+  const inputs = files.map((f): ResponseInputContent => {
+    const dataUrl = `data:${f.mimeType};base64,${f.base64}`;
+    return f.mimeType === "application/pdf"
+      ? { type: "input_file", filename: f.filename, file_data: dataUrl }
       : { type: "input_image", image_url: dataUrl, detail: "high" };
-  return [fileInput, { type: "input_text", text }];
+  });
+  return [...inputs, { type: "input_text", text }];
 }
 
 /** Runs OpenAI, then Gemini if OpenAI isn't configured or throws. Rethrows when neither works. */

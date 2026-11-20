@@ -12,8 +12,9 @@ import { formatValue } from "@/lib/format";
 import { shrinkImage } from "@/lib/image";
 import { DEFAULT_REPAIR_COUNT, estimateImpact, type Impact, type MetricImpact } from "@/lib/impact";
 import { STATUS_STYLES } from "@/lib/status";
-import { isJobsResult, isScoreResult, JOBS_KEY, loadValid, SCORE_KEY } from "@/lib/storage";
-import type { Estimate, EstimateResponse, ScoreResponse } from "@/lib/types";
+import { loadCards, programFor, programName, PROGRAMS, type ProgramId, type SavedCard } from "@/lib/drp";
+import { isJobsResult, JOBS_KEY, loadValid } from "@/lib/storage";
+import type { Estimate, EstimateResponse } from "@/lib/types";
 
 const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
 const CLIENT_TIMEOUT_MS = 55_000;
@@ -69,7 +70,10 @@ function ImpactRow({ m }: { m: MetricImpact }) {
 }
 
 export default function EstimateStep() {
-  const [score, setScore] = useState<ScoreResponse | null | undefined>(undefined);
+  /** Scorecards by DRP from step 1; undefined until read from storage. */
+  const [cards, setCards] = useState<Partial<Record<ProgramId, SavedCard>> | undefined>(undefined);
+  /** The DRP picked by hand; otherwise the estimate's insurer decides. */
+  const [chosen, setChosen] = useState<ProgramId | null>(null);
   const [history, setHistory] = useState<AnomalyResult | null>(null);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -79,7 +83,7 @@ export default function EstimateStep() {
 
   // Steps 1 and 2 left their results in this tab. The estimate itself is never saved.
   useEffect(() => {
-    setScore((loadValid(SCORE_KEY, isScoreResult) as ScoreResponse | null) ?? null);
+    setCards(loadCards());
     setHistory(loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null);
   }, []);
 
@@ -90,6 +94,7 @@ export default function EstimateStep() {
     setLoading(false);
     setError(null);
     setEstimate(null);
+    setChosen(null);
   }
 
   function loadSample(notice?: string) {
@@ -97,6 +102,7 @@ export default function EstimateStep() {
     setFile(null);
     setLoading(false);
     setError(null);
+    setChosen(null);
     setEstimate({ data: sampleEstimate as Estimate, name: "Sample estimate", notice: notice ?? "This is a sample estimate for a fictional car." });
   }
 
@@ -127,8 +133,13 @@ export default function EstimateStep() {
     }
   }
 
-  if (score === undefined) return <main className="px-safe mx-auto max-w-5xl pt-8" />;
+  if (cards === undefined) return <main className="px-safe mx-auto max-w-5xl pt-8" />;
 
+  const available = PROGRAMS.filter((p) => cards[p.id]).map((p) => p.id);
+  // Grade against the DRP the estimate is written for, when step 1 has that scorecard.
+  const estimateProgram = programFor(estimate?.data.insurer);
+  const program = (chosen && cards[chosen] ? chosen : null) ?? (estimateProgram && cards[estimateProgram] ? estimateProgram : null) ?? available[0] ?? null;
+  const score = program ? cards[program]!.result : null;
   const repairCount = score?.repair_count ?? DEFAULT_REPAIR_COUNT;
   const impact = score && estimate ? estimateImpact(score.metrics, estimate.data, history, repairCount) : null;
   const e = estimate?.data;
@@ -148,7 +159,7 @@ export default function EstimateStep() {
       {!score ? (
         <div className="mt-6">
           <Notice kind="info">
-            Upload your scorecard first, so there&apos;s something to grade against.{" "}
+            Upload at least one DRP scorecard first, so there&apos;s something to grade against.{" "}
             <Link href="/assessment/scorecard" className="font-semibold text-gold underline">
               Go to step 1
             </Link>
@@ -214,6 +225,31 @@ export default function EstimateStep() {
           {impact && e && estimate && (
             <section className="mt-10 space-y-6">
               {estimate.notice && <Notice kind="info">{estimate.notice}</Notice>}
+              {e.insurer && estimateProgram !== program && (
+                <Notice kind="info">
+                  This estimate is for {e.insurer}, but step 1 doesn&apos;t have {estimateProgram ? `a ${programName(estimateProgram)}` : "that insurer's"} scorecard, so
+                  it&apos;s graded against {programName(program!)}.{" "}
+                  <Link href="/assessment/scorecard" className="font-semibold text-gold underline">
+                    Add the scorecard
+                  </Link>
+                </Notice>
+              )}
+
+              <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-bone/80">
+                Graded against your
+                <select
+                  value={program!}
+                  onChange={(ev) => setChosen(ev.target.value as ProgramId)}
+                  className="rounded-md border border-white/20 bg-night px-2.5 py-1.5 text-base text-bone focus:border-gold focus:outline-none"
+                >
+                  {available.map((id) => (
+                    <option key={id} value={id}>
+                      {programName(id)}
+                    </option>
+                  ))}
+                </select>
+                DRP scorecard
+              </label>
 
               <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-xl border border-line bg-night-2 p-5">
                 <p className={`font-serif text-6xl leading-none ${GRADE_COLOR[impact.grade]}`} aria-label={`Grade ${impact.grade}`}>
@@ -226,14 +262,14 @@ export default function EstimateStep() {
                   </p>
                   <p className="mt-1 text-sm text-bone/70">
                     {impact.checked
-                      ? `${impact.meets} of ${impact.checked} of this job's numbers meet your insurer's targets.`
+                      ? `${impact.meets} of ${impact.checked} of this job's numbers meet ${programName(program!)}'s targets.`
                       : "This estimate didn't have enough numbers to grade."}
                   </p>
                 </div>
               </div>
 
               <div>
-                <h2 className="font-serif text-2xl text-bone">Effect on your scorecard</h2>
+                <h2 className="font-serif text-2xl text-bone">Effect on your {programName(program!)} scorecard</h2>
                 <p className="mt-1 text-sm text-muted">
                   Your averages now, and with this job added, across {repairCount.toLocaleString("en-US")} repairs
                   {score.repair_count ? "" : " (a typical count; enter yours in step 1)"}.
