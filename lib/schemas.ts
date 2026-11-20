@@ -1,56 +1,25 @@
 import { z } from "zod";
+import { KPI_NAMES } from "./kpis";
 
 /** Units a KPI can be in. Anything else on a scorecard is read as a plain "number". */
 export const KPI_UNITS = ["days", "$", "%", "hours", "/100", "number"] as const;
 
 /**
- * What a KPI measures, whatever the insurer calls it. The estimate math uses this to know which KPIs
- * one estimate can move; satisfaction, quality and "other" can't be predicted from an estimate.
+ * What the AI reads off an insurer's CCC dashboard screenshots for /api/score: the insurer shown, and
+ * value / target pairs for KPIs on our list (lib/kpis.ts), matched by name.
  */
-export const KPI_MEASURES = [
-  "repair_cost",
-  "cycle_time",
-  "supplement_rate",
-  "alt_parts",
-  "aftermarket_parts",
-  "recycled_parts",
-  "on_time",
-  "labor_hours",
-  "refinish_hours",
-  "satisfaction",
-  "quality",
-  "other",
-] as const;
-
-export const KpiSchema = z.object({
-  /** The insurer's own name for it, as printed: "Keys-to-keys cycle time", "Severity", "Quality". */
-  label: z.string(),
-  /** The shop's number; null when the document doesn't show it. */
-  value: z.number().nullable(),
-  /** The insurer's target or goal; null when none is shown. */
-  target: z.number().nullable(),
-  unit: z.enum(KPI_UNITS),
-  higherIsBetter: z.boolean(),
-  measure: z.enum(KPI_MEASURES),
-  /** One plain sentence on what it means for the shop. */
-  note: z.string(),
-  /** True when the shop owner corrected the value or target by hand. */
-  edited: z.boolean().optional(),
-});
-
-/** One insurer's section of a scorecard document. */
-export const InsurerScorecardSchema = z.object({
-  /** The insurer as printed, e.g. "GEICO" or "Farmers Insurance"; null if the document doesn't say. */
+export const ScorecardReadSchema = z.object({
   insurer: z.string().nullable(),
   period: z.string().nullable(),
-  /** How many repairs this insurer's numbers cover, if printed. One estimate's impact depends on it. */
-  repair_count: z.number().nullable(),
-  kpis: z.array(KpiSchema),
-});
-
-/** What the model must return for /api/score: one entry per insurer in the document. */
-export const ScorecardsOutputSchema = z.object({
-  scorecards: z.array(InsurerScorecardSchema),
+  /** Number of claims for this insurer, if shown. */
+  claims: z.number().nullable(),
+  readings: z.array(
+    z.object({
+      kpi: z.enum(KPI_NAMES),
+      value: z.number().nullable(),
+      target: z.number().nullable(),
+    }),
+  ),
 });
 
 /** What the AI reads off a jobs PDF, photo or document. Missing numbers stay null, never guessed. */
@@ -78,7 +47,17 @@ export const EstimateExtractSchema = z.object({
   insurer: z.string().nullable(),
   /** Grand total of the estimate in dollars. */
   total: z.number().nullable(),
+  /** Labor dollars, all labor types together. */
+  laborAmount: z.number().nullable(),
+  /** Parts dollars. */
+  partsAmount: z.number().nullable(),
+  /** Paint and materials dollars. */
+  paintMaterialsAmount: z.number().nullable(),
+  /** Miscellaneous / other charges in dollars (not labor, parts, paint materials or sublet). */
+  miscAmount: z.number().nullable(),
   bodyHours: z.number().nullable(),
+  /** Body (sheet-metal) labor hours on repair operations, as opposed to replace, R&I or overhaul. */
+  bodyRepairHours: z.number().nullable(),
   refinishHours: z.number().nullable(),
   frameHours: z.number().nullable(),
   mechanicalHours: z.number().nullable(),
@@ -90,6 +69,8 @@ export const EstimateExtractSchema = z.object({
     }),
   ),
   sublets: z.array(z.object({ description: z.string(), price: z.number().nullable() })),
+  /** Dollars on lines marked as manually entered or overriding the database (CCC marks these). */
+  overwriteAmount: z.number().nullable(),
   /** True when the estimate is preliminary or written from photos only (no teardown yet). */
   preliminary: z.boolean(),
   /** Short phrases for signs of damage that usually isn't visible until teardown. */

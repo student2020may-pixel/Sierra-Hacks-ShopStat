@@ -29,7 +29,7 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
 
 | Page | What it does |
 | --- | --- |
-| `/assessment/scorecard` | **Step 1.** Upload the scorecard document in any format. One file can cover several insurers: the AI splits it into one section per insurer, and each is filed into its DRP slot (CSAA, GEICO, Travelers, Farmers; `lib/drp.ts`). Each insurer keeps its own KPIs (name, value, target, unit, direction), including quality, CSI or anything else it measures. A section for another insurer can be filed under any slot. Every number can be edited. |
+| `/assessment/scorecard` | **Step 1.** Pick an insurer (CSAA, GEICO, Travelers, Farmers; `lib/drp.ts`) and upload screenshots of its CCC dashboard: the main view and the KPI hover boxes. The AI reads only the insurer whose details are shown (not the summary rows for the others) and the numbers are merged into that slot, so nothing else is overwritten. Numbers can also be typed in. KPIs left blank are inactive for that insurer. |
 | `/assessment/jobs` | **Step 2.** Upload your last cars: CSV or Excel (read in the browser), or a PDF, photo or screenshot (read by the AI). Flags jobs that took far longer than their labor hours predict. |
 | `/assessment/estimate` | **Step 3.** Upload any estimate. The AI reads the repair lines and the insurer; it's graded against that DRP's scorecard (or one you pick). The grade and impact are computed in code. |
 | `/mock-scorecard` | A fictional insurer scorecard for testing. |
@@ -38,16 +38,20 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
 
 [`lib/impact.ts`](lib/impact.ts) does the math; the AI only reads the estimate.
 
-- **Which KPIs:** the estimate's insurer picks the DRP slot, and only that insurer's KPIs are used. Each
-  KPI has a `measure` (repair cost, cycle time, supplement rate, alternate / aftermarket / recycled
-  parts, on-time, labor hours, refinish hours). Those an estimate can move are compared; satisfaction,
-  quality and anything else show as "not affected" rather than being guessed.
-- **This job's numbers:** repair cost, labor and refinish hours, and parts shares come straight from the estimate.
+- **The KPI list:** [`lib/kpis.ts`](lib/kpis.ts) has all 42 KPIs on the CCC dashboard, each with its
+  unit, which way is better, and whether it's set by the estimate (labor $, parts $, paint hours, repair
+  % of sheet-metal labor, overwrite %...), predicted from it (days in the shop, supplements) or reference
+  only (surveys, audits, process timing). Units and directions marked `confirmed: false` are guesses
+  from the name; fix them there.
+- **Which KPIs:** the estimate's insurer picks the DRP slot, and only that insurer's active KPIs are used.
+  The repair-size cycle time KPIs only count an estimate whose total falls in their band.
+- **This claim's numbers:** labor, parts, paint materials and misc dollars, paint and repair hours, and
+  overrides come straight from the estimate.
   Days in the shop come from the line fitted to your last cars in step 2 (or a general rule without
   them), plus half a day per sublet. The chance of a supplement starts from your own past share of
   supplemented jobs and rises for preliminary estimates, signs of hidden damage and frame work.
-- **Effect on the scorecard:** each KPI is an average over the repairs the card covers, so with `n`
-  repairs this job moves it to `(value × n + this job) / (n + 1)`.
+- **Effect on the KPIs:** each KPI is an average over the insurer's claims, so with `n` claims this
+  claim moves it to `(value × n + this claim) / (n + 1)`.
 - **Grade:** how many of this job's own numbers meet the insurer's targets: all of them is an A, 75%+
   a B, 50%+ a C, 25%+ a D, below that an F.
 - **Photo check (optional):** add up to 8 damage photos and they go to the AI with the estimate in
@@ -68,5 +72,5 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
 
 ## Data
 
-`data/sample-scorecards.json` (also shown as a four-insurer document at `/mock-scorecard`), `data/jobs.csv`
+`data/sample-scorecards.json` (also shown at `/mock-scorecard`), `data/jobs.csv`
 and `data/sample-estimate.json` are fictional sample data, not real insurer numbers.

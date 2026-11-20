@@ -62,8 +62,8 @@ function EditForm({ kpi, onSave, onCancel }: { kpi: Kpi; onSave: (k: Kpi) => voi
   );
 }
 
-/** Plain table of one insurer's KPIs: value, target and status, with an Edit link per row. */
-export default function KpiTable({ kpis, onChange }: { kpis: Kpi[]; onChange: (index: number, k: Kpi) => void }) {
+/** Plain table of one insurer's KPIs: value, target and status, with an Edit (or Add) link per row. */
+export default function KpiTable({ kpis, onChange }: { kpis: Kpi[]; onChange: (k: Kpi) => void }) {
   const [editing, setEditing] = useState<number | null>(null);
 
   return (
@@ -84,25 +84,32 @@ export default function KpiTable({ kpis, onChange }: { kpis: Kpi[]; onChange: (i
           {kpis.map((k, i) => {
             const status = kpiStatus(k);
             const style = STATUS_STYLES[status];
+            // One of the two numbers is in: the KPI is in use, it just can't be judged yet.
+            const label = status === "missing" && (k.value !== null || k.target !== null) ? (k.target === null ? "No target" : "No value") : style.label;
             return (
               <Fragment key={`${k.label}-${i}`}>
                 <tr className="border-b border-line last:border-0">
                   <td className="px-4 py-3">
                     <span className="font-medium [overflow-wrap:anywhere] text-bone">{k.label}</span>
                     {k.edited && <span className="ml-2 text-xs text-gold">edited</span>}
+                    {!k.confirmed && (
+                      <span className="mt-0.5 block text-xs text-muted" title="The unit or which way is better is our guess from the KPI name.">
+                        unconfirmed
+                      </span>
+                    )}
                     {/* Phones: status under the name instead of its own column. */}
-                    <span className={`mt-1 block w-fit rounded-full px-2 py-0.5 text-xs font-semibold sm:hidden ${style.chip}`}>{style.label}</span>
+                    <span className={`mt-1 block w-fit rounded-full px-2 py-0.5 text-xs font-semibold sm:hidden ${style.chip}`}>{label}</span>
                   </td>
                   <td className={`px-3 py-3 text-right whitespace-nowrap tabular-nums ${status === "close" || status === "below" ? "font-semibold text-danger-soft" : "text-bone"}`}>
                     {k.value === null ? "—" : formatValue(k.value, k.unit)}
                   </td>
                   <td className="px-3 py-3 text-right whitespace-nowrap text-bone/70 tabular-nums">{k.target === null ? "—" : formatValue(k.target, k.unit)}</td>
                   <td className="hidden px-4 py-3 sm:table-cell">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${style.chip}`}>{style.label}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap ${style.chip}`}>{label}</span>
                   </td>
                   <td className="px-4 py-3 text-right">
                     <button type="button" onClick={() => setEditing(editing === i ? null : i)} className="pressable text-xs font-semibold text-gold hover:text-bone">
-                      Edit
+                      {k.value === null && k.target === null ? "Add" : "Edit"}
                     </button>
                   </td>
                 </tr>
@@ -114,7 +121,7 @@ export default function KpiTable({ kpis, onChange }: { kpis: Kpi[]; onChange: (i
                         onCancel={() => setEditing(null)}
                         onSave={(updated) => {
                           setEditing(null);
-                          onChange(i, updated);
+                          onChange(updated);
                         }}
                       />
                     </td>

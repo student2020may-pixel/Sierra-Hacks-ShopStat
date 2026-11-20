@@ -1,24 +1,67 @@
 {
   "vehicle": "2021 Honda CR-V EX",
   "insurer": null,
-  "total": 4180,
+  "total": 4634,
+  "laborAmount": 1650,
+  "partsAmount": 2332,
+  "paintMaterialsAmount": 290,
+  "miscAmount": 8,
   "bodyHours": 14.5,
+  "bodyRepairHours": 3.5,
   "refinishHours": 7.2,
   "frameHours": 0,
   "mechanicalHours": 1.5,
   "parts": [
-    { "description": "Front bumper cover", "price": 412, "type": "oem" },
-    { "description": "Bumper reinforcement", "price": 268, "type": "oem" },
-    { "description": "Headlamp assembly, left", "price": 689, "type": "oem" },
-    { "description": "Grille", "price": 174, "type": "aftermarket" },
-    { "description": "Hood", "price": 455, "type": "oem" },
-    { "description": "Fender, left", "price": 238, "type": "aftermarket" },
-    { "description": "Radiator support (upper)", "price": 96, "type": "used" }
+    {
+      "description": "Front bumper cover",
+      "price": 412,
+      "type": "oem"
+    },
+    {
+      "description": "Bumper reinforcement",
+      "price": 268,
+      "type": "oem"
+    },
+    {
+      "description": "Headlamp assembly, left",
+      "price": 689,
+      "type": "oem"
+    },
+    {
+      "description": "Grille",
+      "price": 174,
+      "type": "aftermarket"
+    },
+    {
+      "description": "Hood",
+      "price": 455,
+      "type": "oem"
+    },
+    {
+      "description": "Fender, left",
+      "price": 238,
+      "type": "aftermarket"
+    },
+    {
+      "description": "Radiator support (upper)",
+      "price": 96,
+      "type": "used"
+    }
   ],
   "sublets": [
-    { "description": "Front camera calibration", "price": 225 },
-    { "description": "Four-wheel alignment", "price": 129 }
+    {
+      "description": "Front camera calibration",
+      "price": 225
+    },
+    {
+      "description": "Four-wheel alignment",
+      "price": 129
+    }
   ],
+  "overwriteAmount": 0,
   "preliminary": true,
-  "hiddenDamageSigns": ["Front impact with radiator support damage", "Written from photos before teardown"]
+  "hiddenDamageSigns": [
+    "Front impact with radiator support damage",
+    "Written from photos before teardown"
+  ]
 }

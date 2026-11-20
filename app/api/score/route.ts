@@ -1,113 +1,90 @@
 import { NextResponse } from "next/server";
-import sample from "@/data/sample-scorecards.json";
-import { aiConfigured, aiJson } from "@/lib/ai";
+import { aiConfigured, aiJson, type AiFile } from "@/lib/ai";
 import { readUpload, withContents } from "@/lib/fileinput";
-import { KPI_MEASURES, KPI_UNITS, ScorecardsOutputSchema } from "@/lib/schemas";
+import { kpiByName, KPIS } from "@/lib/kpis";
+import { ScorecardReadSchema } from "@/lib/schemas";
 import { plausible } from "@/lib/scoring";
 import { clip } from "@/lib/text";
-import type { InsurerScorecard, Kpi, ScorecardsResponse } from "@/lib/types";
+import type { KpiValue, ScorecardReadResponse } from "@/lib/types";
 import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Vercel rejects request bodies over ~4.5 MB before this code runs; the upload page shrinks photos first.
+// Vercel rejects request bodies over ~4.5 MB before this code runs; the page shrinks screenshots first.
 const MAX_BYTES = 4.5 * 1024 * 1024;
-/** Enough for any real DRP document, small enough that a misread can't flood the page. */
-const MAX_INSURERS = 8;
-const MAX_KPIS = 20;
+const MAX_FILES = 10;
 
-const SYSTEM_PROMPT = `You read DRP scorecards and performance reports for an auto body shop. One document often covers several insurers, each in its own section, table, page or column. Return one entry in "scorecards" per insurer.
+const SYSTEM_PROMPT = `You read an auto body shop's CCC DRP dashboard: screenshots, PDFs or exports of one insurer's KPIs.
 
-Never mix insurers: each insurer's numbers come only from its own section. If the document covers a single insurer, return one entry.
+The screens often list several insurers in a summary table (company name, rank, score, claims) but show details for only one: the selected or highlighted insurer. Read ONLY that insurer. Ignore the summary rows for the others.
 
-For each insurer:
-- insurer: the insurance company as printed (e.g. "GEICO", "Farmers Insurance", "CSAA"), or null if the document doesn't say.
-- period: the reporting period as printed, or null.
-- repair_count: how many repairs (claims, ROs, vehicles) this insurer's numbers cover, or null if not shown.
-- kpis: every performance KPI this insurer measures for the shop, in the order shown. Include quality, re-inspection, CSI and any other KPI, not only common ones. For each:
-  - label: the KPI's name exactly as printed.
-  - value: the shop's number, as a plain number (33% → 33, $3,410 → 3410), or null if not shown.
-  - target: the insurer's target, goal or benchmark for it, or null if none is shown.
-  - unit: one of ${KPI_UNITS.map((u) => `"${u}"`).join(", ")}. Use "/100" for scores out of 100, and "number" for anything else (ratings, counts).
-  - higherIsBetter: true if a higher number is better for the shop.
-  - measure: what it measures, whatever it's called:
-    "repair_cost" (severity, average repair cost or estimate total), "cycle_time" (days to repair, keys to keys, touch-to-delivery),
-    "supplement_rate" (share of jobs with supplements), "alt_parts" (all non-OEM parts), "aftermarket_parts", "recycled_parts" (used/LKQ),
-    "on_time" (delivered when promised), "labor_hours" (labor hours per estimate), "refinish_hours" (paint hours per estimate),
-    "satisfaction" (CSI, NPS, customer surveys), "quality" (re-inspection, comebacks, audits), or "other".
-  - note: one short sentence a busy shop owner understands: what the number means against the target.
+Return:
+- insurer: the insurer whose details are shown (e.g. "CSAA INSURANCE GROUP"), or null if you can't tell.
+- period: the reporting period, if shown (e.g. "8/1/2026-11/30/2026").
+- claims: that insurer's number of claims, if shown.
+- readings: one entry for each KPI below that appears with a number. kpi must be the matching name from this list, exactly:
+${KPIS.map((d) => `  - ${d.name}`).join("\n")}
+  value: the shop's KPI value (the "KPI Value" in a hover box, or the shop's number), as a plain number ($2,085 → 2085, 45.5% → 45.5).
+  target: the insurer's target ("KPI Target"), or null if not shown.
+Only include a KPI when its value or target is actually printed. Never guess numbers, and never take a number from a different KPI or insurer.`;
 
-Only read what is printed; use null instead of guessing. Leave out shop details, ranks and totals across insurers.`;
+const badRequest = (error: string) => NextResponse.json({ error }, { status: 400 });
 
-function sampleResponse(notice: string): NextResponse<ScorecardsResponse> {
-  return NextResponse.json({ source: "sample", scorecards: sample.scorecards as InsurerScorecard[], notice });
-}
-
-function badRequest(error: string) {
-  return NextResponse.json({ error }, { status: 400 });
-}
-
-/** Trims text and drops numbers that can't be real (a 142% rate), so they show as "not shown" instead. */
-function tidyKpi(k: Kpi): Kpi {
-  const unit = KPI_UNITS.includes(k.unit) ? k.unit : "number";
-  const num = (v: number | null) => (v !== null && plausible(v, unit) ? v : null);
-  return {
-    label: clip(k.label, 60),
-    value: num(k.value),
-    target: num(k.target),
-    unit,
-    higherIsBetter: k.higherIsBetter,
-    measure: KPI_MEASURES.includes(k.measure) ? k.measure : "other",
-    note: clip(k.note, 200),
-  };
-}
-
-function tidy(card: InsurerScorecard): InsurerScorecard {
-  const count = card.repair_count;
-  return {
-    insurer: card.insurer ? clip(card.insurer, 60) : null,
-    period: card.period ? clip(card.period, 60) : null,
-    repair_count: count !== null && count >= 1 && count <= 100_000 ? Math.round(count) : null,
-    kpis: card.kpis
-      .slice(0, MAX_KPIS)
-      .map(tidyKpi)
-      .filter((k) => k.label),
-  };
-}
+/** No AI available: the page loads the sample numbers for the slot and shows the note. */
+const sample = (notice: string) =>
+  NextResponse.json<ScorecardReadResponse>({ source: "sample", insurer: null, period: null, claims: null, values: {}, notice });
 
 export async function POST(req: Request) {
-  let file: File | null = null;
+  let uploads: File[] = [];
   try {
-    const value = (await req.formData()).get("file");
-    file = value instanceof File ? value : null;
+    uploads = (await req.formData()).getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   } catch {
-    return badRequest("We couldn't read that upload. Please try choosing the file again.");
+    return badRequest("We couldn't read that upload. Please try choosing the files again.");
   }
-  if (!file || file.size === 0) return badRequest("Please choose your scorecard file to upload.");
-  if (file.size > MAX_BYTES) return badRequest("That file is over 4.5 MB. Try a screenshot or a smaller file.");
+  if (uploads.length === 0) return badRequest("Please choose a screenshot or file to upload.");
+  if (uploads.length > MAX_FILES) return badRequest(`Please upload up to ${MAX_FILES} files at a time.`);
+  if (uploads.reduce((n, f) => n + f.size, 0) > MAX_BYTES) return badRequest("Those files are over 4.5 MB together. Try fewer screenshots at a time.");
 
-  const read = await readUpload(file);
-  if (!read.ok) return badRequest(read.error);
+  const files: AiFile[] = [];
+  const texts: string[] = [];
+  for (const upload of uploads) {
+    const read = await readUpload(upload);
+    if (!read.ok) return badRequest(`${clip(upload.name, 60)}: ${read.error}`);
+    if (read.file) files.push(read.file);
+    if (read.text) texts.push(withContents(read, upload.name, ""));
+  }
 
-  if (!aiConfigured()) return sampleResponse("Reading scorecards isn't set up yet (no API key), so we're showing the sample scorecards.");
-  if (!allowAiRequest(req)) return sampleResponse(LIMIT_NOTICE);
+  if (!aiConfigured()) return sample("Reading screenshots isn't set up yet (no API key), so we're showing sample numbers.");
+  if (!allowAiRequest(req)) return sample(LIMIT_NOTICE);
 
   try {
-    const parsed = await aiJson("api/score", ScorecardsOutputSchema, "scorecards", {
+    const parsed = await aiJson("api/score", ScorecardReadSchema, "scorecard", {
       instructions: SYSTEM_PROMPT,
-      text: withContents(read, file.name, "Read every insurer's KPIs in this document."),
-      files: read.file ? [read.file] : [],
+      text: `${texts.join("\n\n")}Read the KPIs for the insurer shown.`,
+      files,
     });
-    const scorecards = (parsed?.scorecards ?? [])
-      .slice(0, MAX_INSURERS)
-      .map(tidy)
-      .filter((c) => c.kpis.some((k) => k.value !== null));
-    if (scorecards.length === 0) {
-      return badRequest("We couldn't find any DRP KPIs in that file. Try a clearer photo, the PDF, or a screenshot.");
+    const values: Record<string, KpiValue> = {};
+    for (const r of parsed?.readings ?? []) {
+      const def = kpiByName(r.kpi);
+      if (!def) continue;
+      const num = (v: number | null) => (v !== null && plausible(v, def.unit) ? v : null);
+      const value = num(r.value);
+      const target = num(r.target);
+      if (value !== null || target !== null) values[def.id] = { value, target };
     }
-    return NextResponse.json<ScorecardsResponse>({ source: "ai", scorecards });
+    const claims = parsed?.claims ?? null;
+    if (Object.keys(values).length === 0 && claims === null) {
+      return badRequest("We couldn't find any KPI numbers in that. Try the dashboard screenshot or a KPI's hover box.");
+    }
+    return NextResponse.json<ScorecardReadResponse>({
+      source: "ai",
+      insurer: parsed?.insurer ? clip(parsed.insurer, 60) : null,
+      period: parsed?.period ? clip(parsed.period, 60) : null,
+      claims: claims !== null && claims >= 1 && claims <= 100_000 ? Math.round(claims) : null,
+      values,
+    });
   } catch {
-    return sampleResponse("We couldn't reach the AI just now, so we're showing the sample scorecards.");
+    return sample("We couldn't reach the AI just now, so we're showing sample numbers.");
   }
 }

@@ -30,8 +30,14 @@ Return only repair information. Never return the customer's name, phone, email, 
 
 - vehicle: year, make, model and trim, e.g. "2021 Honda CR-V EX", or null.
 - insurer: the insurance company, or null.
-- total: the estimate's grand total in dollars, as a plain number.
+- total: the estimate's grand total (total cost of repair) in dollars, as a plain number.
+- laborAmount: total labor dollars (all labor types together), from the totals section.
+- partsAmount: total parts dollars.
+- paintMaterialsAmount: paint and materials (paint supplies) dollars.
+- miscAmount: miscellaneous / other charges in dollars that aren't labor, parts, paint materials or sublet; null if none.
 - bodyHours, refinishHours, frameHours, mechanicalHours: total labor hours of each type, as plain numbers; null if that type isn't on the estimate.
+- bodyRepairHours: body (sheet-metal) labor hours on lines whose operation is a repair ("Rpr", "Repair"), not replace, R&I, refinish or overhaul.
+- overwriteAmount: total dollars on lines the estimate marks as manually entered or changed from the database (e.g. CCC's manual-entry or override markers); null if none are marked.
 - parts: every part line with its description, its price (plain number, null if not shown) and its type:
   "oem" for new carmaker parts, "aftermarket" for non-OEM new parts (A/M, CAPA, quality replacement), "used" for recycled / LKQ / salvage, "reman" for remanufactured or reconditioned, "unknown" if the estimate doesn't say.
 - sublets: work sent out (alignment, calibration, glass, mechanical), with price.
@@ -53,12 +59,18 @@ function tidy(e: Estimate): Estimate {
     vehicle: e.vehicle ? clip(e.vehicle, 80) : null,
     insurer: e.insurer ? clip(e.insurer, 60) : null,
     total: num(e.total, 500_000),
+    laborAmount: num(e.laborAmount, 500_000),
+    partsAmount: num(e.partsAmount, 500_000),
+    paintMaterialsAmount: num(e.paintMaterialsAmount, 100_000),
+    miscAmount: num(e.miscAmount, 100_000),
     bodyHours: num(e.bodyHours, 500),
+    bodyRepairHours: num(e.bodyRepairHours, 500),
     refinishHours: num(e.refinishHours, 500),
     frameHours: num(e.frameHours, 500),
     mechanicalHours: num(e.mechanicalHours, 500),
     parts: e.parts.slice(0, 200).map((p) => ({ description: clip(p.description, 80), price: num(p.price, 100_000), type: p.type })),
     sublets: e.sublets.slice(0, 30).map((s) => ({ description: clip(s.description, 80), price: num(s.price, 100_000) })),
+    overwriteAmount: num(e.overwriteAmount, 500_000),
     preliminary: e.preliminary,
     hiddenDamageSigns: e.hiddenDamageSigns.slice(0, 6).map((s) => clip(s, 100)),
   };
