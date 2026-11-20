@@ -1,56 +1,69 @@
 {
   "shop": "Valley Auto Body",
-  "title": "DRP performance summary",
-  "period": "Q3 2026 (Jul 1 – Sep 30)",
-  "scorecards": [
+  "title": "DRP KPI summary",
+  "period": "8/1/2026-11/30/2026",
+  "insurers": [
     {
       "insurer": "CSAA",
-      "period": "Q3 2026",
-      "repair_count": 48,
-      "kpis": [
-        { "label": "Cycle time (keys to keys)", "value": 9.4, "target": 8.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "Cars stay about a day and a half longer than CSAA wants." },
-        { "label": "Severity", "value": 3620, "target": 3500, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "The average repair costs a little more than CSAA's goal." },
-        { "label": "Supplement rate", "value": 31, "target": 25, "unit": "%", "higherIsBetter": false, "measure": "supplement_rate", "note": "Almost a third of jobs need a revised estimate." },
-        { "label": "Customer satisfaction", "value": 92, "target": 90, "unit": "/100", "higherIsBetter": true, "measure": "satisfaction", "note": "Customers are happier than the target." },
-        { "label": "Alternate parts usage", "value": 34, "target": 35, "unit": "%", "higherIsBetter": true, "measure": "alt_parts", "note": "Just under CSAA's goal for non-OEM parts." }
-      ]
+      "claims": 48,
+      "values": {
+        "labor_amount": { "value": 2140, "target": 1950 },
+        "part_amount": { "value": 1880, "target": 1800 },
+        "repair_hours_claim": { "value": 6.8, "target": 6.0 },
+        "repair_pct_sheet_metal_a": { "value": 38, "target": 42 },
+        "paint_hours": { "value": 7.4, "target": 7.5 },
+        "vivo_days": { "value": 9.1, "target": 8.0 },
+        "vivo_2_4k": { "value": 7.9, "target": 7.0 },
+        "vivo_4_6k": { "value": 10.4, "target": 9.5 },
+        "claims_true_supplement_pct": { "value": 31, "target": 25 },
+        "quality_score": { "value": 96, "target": 90 },
+        "customer_service_score": { "value": 92, "target": 90 }
+      }
     },
     {
       "insurer": "GEICO",
-      "period": "Q3 2026",
-      "repair_count": 61,
-      "kpis": [
-        { "label": "Repair cycle time", "value": 8.1, "target": 7.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "About a day over GEICO's goal." },
-        { "label": "Average severity", "value": 3290, "target": 3400, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "Repairs cost less than GEICO's goal." },
-        { "label": "Quality (re-inspection score)", "value": 94, "target": 95, "unit": "/100", "higherIsBetter": true, "measure": "quality", "note": "Re-inspections are just under the target." },
-        { "label": "Labor hours per estimate", "value": 19.5, "target": 18.0, "unit": "hours", "higherIsBetter": false, "measure": "labor_hours", "note": "Estimates carry more labor than GEICO's average." },
-        { "label": "Rental days", "value": 9.2, "target": 8.5, "unit": "days", "higherIsBetter": false, "measure": "other", "note": "Customers keep rentals a bit longer than the goal." }
-      ]
+      "claims": 39,
+      "values": {
+        "labor_amount": { "value": 1910, "target": 2000 },
+        "part_price": { "value": 212, "target": 240 },
+        "part_pct": { "value": 44, "target": 45 },
+        "repair_hours_appraisal": { "value": 6.1, "target": 5.5 },
+        "overwrite_pct": { "value": 4.2, "target": 3.0 },
+        "vivo_days": { "value": 8.2, "target": 7.5 },
+        "vivo_9_20k": { "value": 16.5, "target": 14.0 },
+        "true_supplements": { "value": 1.1, "target": 0.9 },
+        "estimate_accuracy": { "value": 91, "target": 92 },
+        "net_promoter_score": { "value": 78, "target": 70 }
+      }
     },
     {
       "insurer": "Travelers",
-      "period": "Q3 2026",
-      "repair_count": 23,
-      "kpis": [
-        { "label": "Cycle time", "value": 7.6, "target": 8.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "Faster than Travelers' goal." },
-        { "label": "Severity", "value": 3910, "target": 3700, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "The average repair costs more than Travelers' goal." },
-        { "label": "Recycled parts usage", "value": 12, "target": 15, "unit": "%", "higherIsBetter": true, "measure": "recycled_parts", "note": "Fewer used parts than Travelers wants." },
-        { "label": "Refinish hours per estimate", "value": 7.8, "target": 7.0, "unit": "hours", "higherIsBetter": false, "measure": "refinish_hours", "note": "Estimates carry more paint time than the goal." },
-        { "label": "Customer satisfaction", "value": 91, "target": 90, "unit": "/100", "higherIsBetter": true, "measure": "satisfaction", "note": "Just above the target." }
-      ]
+      "claims": 17,
+      "values": {
+        "labor_pct": { "value": 41, "target": 40 },
+        "paint_pct": { "value": 12.5, "target": 11 },
+        "misc_pct": { "value": 2.1, "target": 2.5 },
+        "repair_pct_sheet_metal_b": { "value": 47, "target": 45 },
+        "vivo_0_3k": { "value": 5.2, "target": 5.0 },
+        "vivo_3_6k": { "value": 8.8, "target": 8.0 },
+        "vivo_6k_plus": { "value": 13.9, "target": 13.0 },
+        "claims_supplement_request_pct": { "value": 22, "target": 25 },
+        "kept_informed_pct": { "value": 94, "target": 90 }
+      }
     },
     {
       "insurer": "Farmers",
-      "period": "Q3 2026",
-      "repair_count": 35,
-      "kpis": [
-        { "label": "Days to repair", "value": 10.2, "target": 9.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "Over a day longer than Farmers' goal." },
-        { "label": "Severity", "value": 3480, "target": 3450, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "Slightly above Farmers' goal." },
-        { "label": "Supplement frequency", "value": 28, "target": 30, "unit": "%", "higherIsBetter": false, "measure": "supplement_rate", "note": "Fewer supplements than the target." },
-        { "label": "Aftermarket parts usage", "value": 22, "target": 25, "unit": "%", "higherIsBetter": true, "measure": "aftermarket_parts", "note": "Below Farmers' goal for aftermarket parts." },
-        { "label": "On-time delivery", "value": 84, "target": 90, "unit": "%", "higherIsBetter": true, "measure": "on_time", "note": "Some cars go back later than promised." },
-        { "label": "Quality", "value": 97, "target": 95, "unit": "/100", "higherIsBetter": true, "measure": "quality", "note": "Quality is above the target." }
-      ]
+      "claims": 6,
+      "values": {
+        "part_amount": { "value": 2050, "target": 1900 },
+        "paint_hours": { "value": 8.3, "target": 7.5 },
+        "vivo_0_2k": { "value": 4.5, "target": 4.0 },
+        "vivo_2_4k": { "value": 7.2, "target": 7.5 },
+        "vivo_6_9k": { "value": 12.0, "target": 11.0 },
+        "accuracy_pct": { "value": 95, "target": 92 },
+        "audit_score": { "value": 93, "target": 90 },
+        "survey_on_time_pct": { "value": 88, "target": 90 }
+      }
     }
   ]
 }

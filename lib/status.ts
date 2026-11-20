@@ -18,5 +18,5 @@ export const STATUS_STYLES: Record<Status, { label: string; chip: string }> = {
   meets: { label: "Meets target", chip: "bg-success/15 text-success-soft" },
   close: { label: "Close", chip: "bg-warning/15 text-warning" },
   below: { label: "Below target", chip: "bg-danger/15 text-danger-soft" },
-  missing: { label: "Not shown", chip: "bg-white/10 text-muted" },
+  missing: { label: "Inactive", chip: "bg-white/10 text-muted" },
 };

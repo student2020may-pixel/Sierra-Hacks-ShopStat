@@ -1,27 +1,57 @@
 import type { z } from "zod";
-import type { EstimateExtractSchema, EstimatePhotoReviewSchema, InsurerScorecardSchema, KPI_MEASURES, KPI_UNITS, KpiSchema } from "./schemas";
+import type { KpiKind } from "./kpis";
+import type { EstimateExtractSchema, EstimatePhotoReviewSchema, KPI_UNITS, ScorecardReadSchema } from "./schemas";
 
-export type Kpi = z.infer<typeof KpiSchema>;
 export type KpiUnit = (typeof KPI_UNITS)[number];
-export type KpiMeasure = (typeof KPI_MEASURES)[number];
+
+/** One KPI for one insurer: its definition from lib/kpis.ts with this insurer's value and target. */
+export interface Kpi {
+  id: string;
+  label: string;
+  unit: KpiUnit;
+  higherIsBetter: boolean;
+  kind: KpiKind;
+  /** False when the unit or direction is a guess (lib/kpis.ts). */
+  confirmed: boolean;
+  value: number | null;
+  target: number | null;
+  /** True when the shop owner typed or corrected it. */
+  edited?: boolean;
+}
 /** A KPI with both a value and a target, so it can be judged. */
 export type ScoredKpi = Kpi & { value: number; target: number };
 
 export const isScored = (k: Kpi): k is ScoredKpi => k.value !== null && k.target !== null;
 
-export type InsurerScorecard = z.infer<typeof InsurerScorecardSchema>;
-
-/** One DRP slot's scorecard, as stored in the tab. */
-export interface SlotCard extends InsurerScorecard {
-  /** "ai" when the model read an upload, "sample" for the fictional sample data. */
-  source: "ai" | "sample";
+/** This insurer's numbers for one KPI. */
+export interface KpiValue {
+  value: number | null;
+  target: number | null;
+  edited?: boolean;
 }
 
-/** Response body of POST /api/score: every insurer section found in the document. */
-export interface ScorecardsResponse {
+/** One DRP slot, as stored in the tab: this insurer's KPI values, by KPI id. KPIs not here are inactive. */
+export interface SlotCard {
+  /** "ai" or "manual" for the shop's own numbers, "sample" for the fictional sample data. */
+  source: "ai" | "manual" | "sample";
+  /** The insurer as printed on the screenshots, if read. */
+  insurer: string | null;
+  period: string | null;
+  /** Claims this insurer's averages cover. One estimate's impact depends on it. */
+  claims: number | null;
+  values: Record<string, KpiValue>;
+}
+
+export type ScorecardRead = z.infer<typeof ScorecardReadSchema>;
+
+/** Response body of POST /api/score. */
+export interface ScorecardReadResponse {
   source: "ai" | "sample";
-  scorecards: InsurerScorecard[];
-  /** Friendly note shown when source is "sample". */
+  insurer: string | null;
+  period: string | null;
+  claims: number | null;
+  /** By KPI id. */
+  values: Record<string, KpiValue>;
   notice?: string;
 }
 

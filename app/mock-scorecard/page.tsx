@@ -1,15 +1,14 @@
 import type { Metadata } from "next";
-import sample from "@/data/sample-scorecards.json";
+import { slotKpis } from "@/lib/drp";
 import { formatValue, formatVariance, meetsTarget } from "@/lib/format";
-import { isScored, type InsurerScorecard } from "@/lib/types";
+import { SAMPLE as sample } from "@/lib/sample";
+import { isScored, type SlotCard } from "@/lib/types";
 
-export const metadata: Metadata = { title: "Sample DRP performance summary" };
-
-const scorecards = sample.scorecards as InsurerScorecard[];
+export const metadata: Metadata = { title: "Sample DRP KPI summary" };
 
 /**
- * A fictional DRP performance summary covering four insurers in one document, like the ones shops
- * keep. Upload a screenshot or PDF of this page to test reading a multi-insurer scorecard.
+ * A fictional KPI summary for four insurers, laid out like a printed report. Upload a screenshot of
+ * one insurer's section to test reading.
  */
 export default function MockScorecardPage() {
   return (
@@ -22,52 +21,48 @@ export default function MockScorecardPage() {
           <p className="mt-2 text-xs font-semibold text-red-700">Sample data: fictional numbers, not from any insurer.</p>
         </header>
 
-        {scorecards.map((card) => (
-          <section key={card.insurer} className="mt-8">
-            <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-300 pb-1">
-              <h2 className="text-lg font-bold">{card.insurer} DRP</h2>
-              <p className="text-sm text-slate-600">Repairs reviewed: {card.repair_count}</p>
-            </div>
-            <div className="mt-2 overflow-x-auto">
-              <table className="w-full min-w-[520px] text-sm">
-                <thead>
-                  <tr className="bg-slate-800 text-left text-xs text-white uppercase">
-                    <th className="px-3 py-2 font-semibold">KPI</th>
-                    <th className="px-3 py-2 text-right font-semibold">Shop</th>
-                    <th className="px-3 py-2 text-right font-semibold">Target</th>
-                    <th className="px-3 py-2 text-right font-semibold">Variance</th>
-                    <th className="px-3 py-2 text-center font-semibold">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {card.kpis.filter(isScored).map((k, i) => {
-                    const ok = meetsTarget(k);
-                    return (
-                      <tr key={k.label} className={i % 2 ? "bg-slate-50" : ""}>
-                        <td className="border-b border-slate-200 px-3 py-2">
-                          <span className="font-medium">{k.label}</span>
-                          <span className="block text-xs text-slate-500">{k.higherIsBetter ? "Higher is better" : "Lower is better"}</span>
-                        </td>
-                        <td className="border-b border-slate-200 px-3 py-2 text-right font-semibold whitespace-nowrap tabular-nums">
-                          {formatValue(k.value, k.unit)}
-                        </td>
-                        <td className="border-b border-slate-200 px-3 py-2 text-right whitespace-nowrap tabular-nums">{formatValue(k.target, k.unit)}</td>
-                        <td className={`border-b border-slate-200 px-3 py-2 text-right tabular-nums ${ok ? "text-slate-600" : "font-semibold text-red-700"}`}>
-                          {formatVariance(k.value, k.target, k.unit)}
-                        </td>
-                        <td className="border-b border-slate-200 px-3 py-2 text-center">
-                          <span className={`inline-block rounded-sm px-2 py-0.5 text-xs font-bold ${ok ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}>
-                            {ok ? "MEETS" : "BELOW"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        ))}
+        {sample.insurers.map((ins) => {
+          const card: SlotCard = { source: "sample", insurer: ins.insurer, period: sample.period, claims: ins.claims, values: ins.values };
+          return (
+            <section key={ins.insurer} className="mt-8">
+              <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-300 pb-1">
+                <h2 className="text-lg font-bold">{ins.insurer}</h2>
+                <p className="text-sm text-slate-600">Claims: {ins.claims}</p>
+              </div>
+              <div className="mt-2 overflow-x-auto">
+                <table className="w-full min-w-[520px] text-sm">
+                  <thead>
+                    <tr className="bg-slate-800 text-left text-xs text-white uppercase">
+                      <th className="px-3 py-2 font-semibold">KPI Display Name</th>
+                      <th className="px-3 py-2 text-right font-semibold">KPI Value</th>
+                      <th className="px-3 py-2 text-right font-semibold">KPI Target</th>
+                      <th className="px-3 py-2 text-right font-semibold">Variance</th>
+                      <th className="px-3 py-2 text-center font-semibold"># Exceptions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {slotKpis(card)
+                      .filter(isScored)
+                      .map((k, i) => {
+                        const ok = meetsTarget(k);
+                        return (
+                          <tr key={k.id} className={i % 2 ? "bg-slate-50" : ""}>
+                            <td className="border-b border-slate-200 px-3 py-2 font-medium">{k.label}</td>
+                            <td className="border-b border-slate-200 px-3 py-2 text-right font-semibold whitespace-nowrap tabular-nums">{formatValue(k.value, k.unit)}</td>
+                            <td className="border-b border-slate-200 px-3 py-2 text-right whitespace-nowrap tabular-nums">{formatValue(k.target, k.unit)}</td>
+                            <td className={`border-b border-slate-200 px-3 py-2 text-right tabular-nums ${ok ? "text-slate-600" : "font-semibold text-red-700"}`}>
+                              {formatVariance(k.value, k.target, k.unit)}
+                            </td>
+                            <td className="border-b border-slate-200 px-3 py-2 text-center font-bold">{ok ? 0 : 1}</td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          );
+        })}
       </article>
     </main>
   );

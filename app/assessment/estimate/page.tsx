@@ -12,7 +12,7 @@ import { formatValue } from "@/lib/format";
 import { shrinkImage } from "@/lib/image";
 import { DEFAULT_REPAIR_COUNT, estimateImpact, photoGrade, type Impact, type KpiImpact } from "@/lib/impact";
 import { STATUS_STYLES } from "@/lib/status";
-import { loadCards, programFor, programName, PROGRAMS, type ProgramId, type SavedCard } from "@/lib/drp";
+import { loadCards, programFor, programName, PROGRAMS, slotKpis, type ProgramId, type SavedCard } from "@/lib/drp";
 import { isJobsResult, JOBS_KEY, loadValid } from "@/lib/storage";
 import type { Estimate, EstimateResponse, PhotoFinding, PhotoReview } from "@/lib/types";
 
@@ -131,6 +131,15 @@ const GRADE_COLOR: Record<Impact["grade"], string> = {
 
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
+const SKIP_NOTE: Record<NonNullable<KpiImpact["skip"]>, string> = {
+  reference: "not moved by one estimate",
+  "other-size": "not this repair size",
+  "not-shown": "not on the estimate",
+};
+
+/** Graded KPIs first, then predicted ones, then reference ones. */
+const KIND_ORDER = { estimate: 0, predicted: 1, reference: 2 } as const;
+
 /** One job barely moves an average over many repairs, so the change gets more precision than the values. */
 function formatDelta(delta: number, unit: KpiImpact["unit"]): string {
   if (Math.abs(delta) < 0.005) return "no change";
@@ -150,6 +159,11 @@ function ImpactRow({ m }: { m: KpiImpact }) {
     <tr className="border-b border-line last:border-0">
       <td className="px-4 py-3">
         <span className="font-medium text-bone">{m.label}</span>
+        {(m.kind === "predicted" || !m.confirmed) && (
+          <span className="mt-0.5 block text-xs text-muted">
+            {[m.kind === "predicted" && "predicted", !m.confirmed && "unconfirmed"].filter(Boolean).join(" · ")}
+          </span>
+        )}
         {/* Phones: the target sits under the name instead of in its own column. */}
         <span className="mt-0.5 block text-xs text-muted sm:hidden">Target {formatValue(m.target, m.unit)}</span>
         {changed && (
@@ -165,7 +179,7 @@ function ImpactRow({ m }: { m: KpiImpact }) {
         <span className="text-bone/70">{formatValue(m.before, m.unit)}</span>
         <span className="text-muted"> → </span>
         <span className="font-semibold text-bone">{formatValue(m.after, m.unit)}</span>
-        <span className={`block text-xs ${color}`}>{m.jobValue === null ? "not affected" : formatDelta(m.after - m.before, m.unit)}</span>
+        <span className={`block text-xs ${color}`}>{m.skip ? SKIP_NOTE[m.skip] : formatDelta(m.after - m.before, m.unit)}</span>
       </td>
       <td className="hidden px-4 py-3 text-right whitespace-nowrap text-bone/70 tabular-nums sm:table-cell">{formatValue(m.target, m.unit)}</td>
     </tr>
@@ -279,8 +293,8 @@ export default function EstimateStep() {
   const estimateProgram = programFor(estimate?.data.insurer);
   const program = (chosen && cards[chosen] ? chosen : null) ?? (estimateProgram && cards[estimateProgram] ? estimateProgram : null) ?? available[0] ?? null;
   const score = program ? cards[program]!.card : null;
-  const repairCount = score?.repair_count ?? DEFAULT_REPAIR_COUNT;
-  const impact = score && estimate ? estimateImpact(score.kpis, estimate.data, history, repairCount, estimate.photoReview) : null;
+  const repairCount = score?.claims ?? DEFAULT_REPAIR_COUNT;
+  const impact = score && estimate ? estimateImpact(slotKpis(score), estimate.data, history, repairCount, estimate.photoReview) : null;
   const e = estimate?.data;
   const oem = e?.parts.filter((p) => p.type === "oem").length ?? 0;
   const alt = e?.parts.filter((p) => p.type !== "oem" && p.type !== "unknown").length ?? 0;
@@ -443,8 +457,8 @@ export default function EstimateStep() {
               <div>
                 <h2 className="font-serif text-2xl text-bone">Effect on your {programName(program!)} scorecard</h2>
                 <p className="mt-1 text-sm text-muted">
-                  Your averages now, and with this job added, across {repairCount.toLocaleString("en-US")} repairs
-                  {score.repair_count ? "" : " (a typical count; enter yours in step 1)"}.
+                  Your averages now, and with this claim added, across {repairCount.toLocaleString("en-US")} claims
+                  {score.claims ? "" : " (a typical count; enter yours in step 1)"}. Only KPIs with a value and target in step 1 are shown.
                 </p>
                 <div className="mt-3 overflow-hidden rounded-xl border border-line bg-night-2">
                   <table className="w-full text-sm">
@@ -457,7 +471,7 @@ export default function EstimateStep() {
                       </tr>
                     </thead>
                     <tbody>
-                      {impact.kpis.map((m, i) => (
+                      {[...impact.kpis].sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind]).map((m, i) => (
                         <ImpactRow key={`${m.label}-${i}`} m={m} />
                       ))}
                     </tbody>
