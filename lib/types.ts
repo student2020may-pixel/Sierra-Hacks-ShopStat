@@ -1,38 +1,26 @@
 import type { z } from "zod";
-import type { EstimateExtractSchema, EstimatePhotoReviewSchema, MetricSchema, OtherMetricSchema } from "./schemas";
+import type { EstimateExtractSchema, EstimatePhotoReviewSchema, InsurerScorecardSchema, KPI_MEASURES, KPI_UNITS, KpiSchema } from "./schemas";
 
-export type Metric = z.infer<typeof MetricSchema>;
-export type MetricKey = Metric["key"];
-/** A metric that was on the scorecard, so it has numbers. */
-export type ScoredMetric = Metric & { shopValue: number; target: number; score: number };
-export type OtherMetric = z.infer<typeof OtherMetricSchema>;
+export type Kpi = z.infer<typeof KpiSchema>;
+export type KpiUnit = (typeof KPI_UNITS)[number];
+export type KpiMeasure = (typeof KPI_MEASURES)[number];
+/** A KPI with both a value and a target, so it can be judged. */
+export type ScoredKpi = Kpi & { value: number; target: number };
 
-export const isScored = (m: Metric): m is ScoredMetric =>
-  m.shopValue !== null && m.target !== null && m.score !== null;
+export const isScored = (k: Kpi): k is ScoredKpi => k.value !== null && k.target !== null;
 
-export interface Scorecard {
-  shop: { name: string; shopId: string; address: string; region: string };
-  insurer: { name: string; program: string };
-  period: string;
-  issuedOn: string;
-  repairsReviewed: number;
-  regionalRank: { rank: number; of: number };
-  metrics: ScoredMetric[];
+export type InsurerScorecard = z.infer<typeof InsurerScorecardSchema>;
+
+/** One DRP slot's scorecard, as stored in the tab. */
+export interface SlotCard extends InsurerScorecard {
+  /** "ai" when the model read an upload, "sample" for the fictional sample data. */
+  source: "ai" | "sample";
 }
 
-/** Response body of POST /api/score. */
-export interface ScoreResponse {
-  /** "ai" when the model read the upload, "sample" when we fell back to data/scorecard.json. */
+/** Response body of POST /api/score: every insurer section found in the document. */
+export interface ScorecardsResponse {
   source: "ai" | "sample";
-  /** Always the six metrics in canonical order; ones not on the scorecard have null numbers. */
-  metrics: Metric[];
-  other_metrics: OtherMetric[];
-  /** Reporting period printed on the scorecard, if any. */
-  period?: string | null;
-  /** Number of repairs the scorecard covers, if printed. */
-  repair_count?: number | null;
-  /** Insurance company that issued the scorecard, if shown. */
-  insurer?: string | null;
+  scorecards: InsurerScorecard[];
   /** Friendly note shown when source is "sample". */
   notice?: string;
 }

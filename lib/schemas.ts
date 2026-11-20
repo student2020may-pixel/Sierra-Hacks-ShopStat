@@ -1,72 +1,56 @@
 import { z } from "zod";
 
-export const METRIC_KEYS = [
+/** Units a KPI can be in. Anything else on a scorecard is read as a plain "number". */
+export const KPI_UNITS = ["days", "$", "%", "hours", "/100", "number"] as const;
+
+/**
+ * What a KPI measures, whatever the insurer calls it. The estimate math uses this to know which KPIs
+ * one estimate can move; satisfaction, quality and "other" can't be predicted from an estimate.
+ */
+export const KPI_MEASURES = [
+  "repair_cost",
   "cycle_time",
-  "customer_satisfaction",
-  "avg_repair_cost",
   "supplement_rate",
-  "alt_parts_usage",
-  "on_time_delivery",
+  "alt_parts",
+  "aftermarket_parts",
+  "recycled_parts",
+  "on_time",
+  "labor_hours",
+  "refinish_hours",
+  "satisfaction",
+  "quality",
+  "other",
 ] as const;
 
-export type MetricUnit = "days" | "/100" | "$" | "%";
-
-/** Canonical label, unit, and direction for each of the six metrics. Used in the prompt and to fill gaps. */
-export const METRIC_DEFS: Record<(typeof METRIC_KEYS)[number], { label: string; unit: MetricUnit; higherIsBetter: boolean }> = {
-  cycle_time: { label: "Cycle Time", unit: "days", higherIsBetter: false },
-  customer_satisfaction: { label: "Customer Satisfaction (CSI)", unit: "/100", higherIsBetter: true },
-  avg_repair_cost: { label: "Average Repair Cost", unit: "$", higherIsBetter: false },
-  supplement_rate: { label: "Supplement Rate", unit: "%", higherIsBetter: false },
-  alt_parts_usage: { label: "Alternate Parts Usage", unit: "%", higherIsBetter: true },
-  on_time_delivery: { label: "On-Time Delivery", unit: "%", higherIsBetter: true },
-};
-
-export const MetricSchema = z.object({
-  key: z.enum(METRIC_KEYS),
+export const KpiSchema = z.object({
+  /** The insurer's own name for it, as printed: "Keys-to-keys cycle time", "Severity", "Quality". */
   label: z.string(),
-  unit: z.enum(["days", "/100", "$", "%"]),
-  /** null when the metric isn't on the uploaded scorecard (shopValue, target, and score are null together). */
-  shopValue: z.number().nullable(),
+  /** The shop's number; null when the document doesn't show it. */
+  value: z.number().nullable(),
+  /** The insurer's target or goal; null when none is shown. */
   target: z.number().nullable(),
+  unit: z.enum(KPI_UNITS),
   higherIsBetter: z.boolean(),
-  score: z.number().nullable(),
-  explanation: z.string(),
+  measure: z.enum(KPI_MEASURES),
+  /** One plain sentence on what it means for the shop. */
+  note: z.string(),
   /** True when the shop owner corrected the value or target by hand. */
   edited: z.boolean().optional(),
 });
 
-/** A relevant metric on the scorecard that isn't one of the six (touch time, comeback rate, ...). */
-export const OtherMetricSchema = z.object({
-  label: z.string(),
-  value: z.number().nullable(),
-  target: z.number().nullable(),
-  /** Free text as printed on the scorecard: "%", "$", "hours", "per day", or "". */
-  unit: z.string(),
-  note: z.string(),
-});
-
-/**
- * What the model extracts for each of the six metrics. It only reads numbers and writes the
- * explanation; the 0–100 score is computed in code (lib/scoring.ts).
- */
-export const ExtractedMetricSchema = z.object({
-  key: z.enum(METRIC_KEYS),
-  /** null when the metric isn't on the scorecard. */
-  shopValue: z.number().nullable(),
-  target: z.number().nullable(),
-  explanation: z.string(),
-});
-
-/** What the model must return for /api/score. */
-export const ScoreOutputSchema = z.object({
-  /** The reporting period as printed (e.g. "Q3 2026"), or null if the scorecard doesn't show one. */
-  period: z.string().nullable(),
-  /** How many repairs the scorecard covers, if printed. One estimate's impact depends on it. */
-  repair_count: z.number().nullable(),
-  /** The insurance company that issued the scorecard, if shown. */
+/** One insurer's section of a scorecard document. */
+export const InsurerScorecardSchema = z.object({
+  /** The insurer as printed, e.g. "GEICO" or "Farmers Insurance"; null if the document doesn't say. */
   insurer: z.string().nullable(),
-  metrics: z.array(ExtractedMetricSchema),
-  other_metrics: z.array(OtherMetricSchema),
+  period: z.string().nullable(),
+  /** How many repairs this insurer's numbers cover, if printed. One estimate's impact depends on it. */
+  repair_count: z.number().nullable(),
+  kpis: z.array(KpiSchema),
+});
+
+/** What the model must return for /api/score: one entry per insurer in the document. */
+export const ScorecardsOutputSchema = z.object({
+  scorecards: z.array(InsurerScorecardSchema),
 });
 
 /** What the AI reads off a jobs PDF, photo or document. Missing numbers stay null, never guessed. */

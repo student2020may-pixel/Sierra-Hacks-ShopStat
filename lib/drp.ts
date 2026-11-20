@@ -1,15 +1,16 @@
-// The shop's DRP programs. Each one has its own insurer scorecard (its KPIs and targets), and an
-// estimate is graded against the scorecard of the program it's written for.
-import { isScoreResult, load, loadValid, remove, save, SCORE_FILE_KEY, SCORE_KEY } from "./storage";
-import type { ScoreResponse } from "./types";
+// The shop's DRP programs. Each has its own scorecard (its own KPIs and targets), and an estimate is
+// graded against the scorecard of the insurer it's written for.
+import { KPI_MEASURES, KPI_UNITS } from "./schemas";
+import { load, remove, save, SCORE_FILE_KEY, SCORE_KEY } from "./storage";
+import type { SlotCard } from "./types";
 
-export type ProgramId = "state-farm" | "csaa" | "geico" | "other";
+export type ProgramId = "csaa" | "geico" | "travelers" | "farmers";
 
-export const PROGRAMS: { id: ProgramId; name: string; match?: RegExp }[] = [
-  { id: "state-farm", name: "State Farm", match: /state\s*farm/i },
+export const PROGRAMS: { id: ProgramId; name: string; match: RegExp }[] = [
   { id: "csaa", name: "CSAA", match: /\bcsaa\b|\baaa\b/i },
   { id: "geico", name: "GEICO", match: /geico/i },
-  { id: "other", name: "Other insurer" },
+  { id: "travelers", name: "Travelers", match: /travel+ers/i },
+  { id: "farmers", name: "Farmers", match: /farmers/i },
 ];
 
 export const programName = (id: ProgramId) => PROGRAMS.find((p) => p.id === id)!.name;
@@ -17,53 +18,63 @@ export const programName = (id: ProgramId) => PROGRAMS.find((p) => p.id === id)!
 /** Which DRP an insurer name printed on a scorecard or estimate belongs to, if it's one of ours. */
 export function programFor(insurer: string | null | undefined): ProgramId | null {
   if (!insurer) return null;
-  return PROGRAMS.find((p) => p.match?.test(insurer))?.id ?? null;
+  return PROGRAMS.find((p) => p.match.test(insurer))?.id ?? null;
 }
 
-const scoreKey = (id: ProgramId) => `${SCORE_KEY}:${id}`;
-const fileKey = (id: ProgramId) => `${SCORE_FILE_KEY}:${id}`;
+// v2: per-insurer KPIs. Scorecards saved in the older fixed-metric shape are dropped, not converted.
+const slotKey = (id: ProgramId) => `${SCORE_KEY}:v2:${id}`;
+const fileKey = (id: ProgramId) => `${SCORE_FILE_KEY}:v2:${id}`;
+const OLD_KEYS = [SCORE_KEY, SCORE_FILE_KEY, ...["state-farm", "csaa", "geico", "other"].flatMap((id) => [`${SCORE_KEY}:${id}`, `${SCORE_FILE_KEY}:${id}`])];
 
-/** Before DRPs, the tab held one scorecard. File it under its insurer's program the first time we look. */
-function migrate() {
-  const old = loadValid(SCORE_KEY, isScoreResult) as ScoreResponse | null;
-  if (!old) return;
-  const id = programFor(old.insurer) ?? "other";
-  if (!load(scoreKey(id))) {
-    save(scoreKey(id), old);
-    save(fileKey(id), load<string>(SCORE_FILE_KEY));
-  }
-  remove(SCORE_KEY);
-  remove(SCORE_FILE_KEY);
+const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+const isNumOrNull = (v: unknown) => v === null || typeof v === "number";
+
+function isSlotCard(v: unknown): v is SlotCard {
+  return (
+    isObject(v) &&
+    (v.source === "ai" || v.source === "sample") &&
+    Array.isArray(v.kpis) &&
+    v.kpis.every(
+      (k) =>
+        isObject(k) &&
+        typeof k.label === "string" &&
+        isNumOrNull(k.value) &&
+        isNumOrNull(k.target) &&
+        typeof k.higherIsBetter === "boolean" &&
+        (KPI_UNITS as readonly unknown[]).includes(k.unit) &&
+        (KPI_MEASURES as readonly unknown[]).includes(k.measure),
+    )
+  );
 }
 
 export interface SavedCard {
-  result: ScoreResponse;
+  card: SlotCard;
+  /** The file it came from, so the slot can say where its numbers came from. */
   file: string | null;
 }
 
 export function loadCard(id: ProgramId): SavedCard | null {
-  migrate();
-  const result = loadValid(scoreKey(id), isScoreResult) as ScoreResponse | null;
-  if (!result) return null;
-  return { result: { ...result, other_metrics: Array.isArray(result.other_metrics) ? result.other_metrics : [] }, file: load<string>(fileKey(id)) };
+  OLD_KEYS.forEach(remove);
+  const card = load<unknown>(slotKey(id));
+  return isSlotCard(card) ? { card, file: load<string>(fileKey(id)) } : null;
 }
 
-export function saveCard(id: ProgramId, result: ScoreResponse, file?: string | null) {
-  save(scoreKey(id), result);
+export function saveCard(id: ProgramId, card: SlotCard, file?: string | null) {
+  save(slotKey(id), card);
   if (file !== undefined) save(fileKey(id), file);
 }
 
 export function removeCard(id: ProgramId) {
-  remove(scoreKey(id));
+  remove(slotKey(id));
   remove(fileKey(id));
 }
 
-/** Every program that has a scorecard in this tab, in menu order. */
+/** Every DRP that has a scorecard in this tab, in menu order. */
 export function loadCards(): Partial<Record<ProgramId, SavedCard>> {
   return Object.fromEntries(
     PROGRAMS.flatMap((p) => {
-      const card = loadCard(p.id);
-      return card ? [[p.id, card]] : [];
+      const saved = loadCard(p.id);
+      return saved ? [[p.id, saved]] : [];
     }),
   );
 }

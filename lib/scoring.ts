@@ -12,7 +12,7 @@
  * Example: cycle time 11.8 days vs a 7.5-day target is a 57% miss → 13.
  */
 
-import type { MetricUnit } from "./schemas";
+import type { Kpi, KpiUnit } from "./types";
 
 const BEAT_FOR_FULL_MARKS = 0.2;
 
@@ -20,13 +20,15 @@ const BEAT_FOR_FULL_MARKS = 0.2;
  * Values outside these ranges can't be real (a 142% rate, a 1,284-day cycle time), so they're
  * treated as a misread (from the AI) or a typo (from the edit form) rather than scored.
  */
-export const PLAUSIBLE: Record<MetricUnit, [number, number]> = {
+export const PLAUSIBLE: Record<KpiUnit, [number, number]> = {
   "%": [0, 100],
   "/100": [0, 100],
   days: [0, 365],
-  $: [0, 100_000],
+  hours: [0, 1_000],
+  $: [0, 1_000_000],
+  number: [0, 10_000_000],
 };
-export const plausible = (v: number, unit: MetricUnit) =>
+export const plausible = (v: number, unit: KpiUnit) =>
   Number.isFinite(v) && v >= PLAUSIBLE[unit][0] && v <= PLAUSIBLE[unit][1];
 
 /** [miss fraction, score] points the miss curve passes through. */
@@ -56,23 +58,7 @@ export function scoreMetric(value: number, target: number, higherIsBetter: boole
   return 0;
 }
 
-/**
- * Applies a hand correction to one metric: rescored with the formula above, or marked "not on this
- * scorecard" when cleared. The AI's explanation described the old numbers, so it's replaced.
- */
-export function applyEdit<M extends { unit: MetricUnit; higherIsBetter: boolean }>(
-  metric: M,
-  edit: { shopValue: number; target: number } | null,
-): M & { shopValue: number | null; target: number | null; score: number | null; explanation: string; edited: boolean } {
-  if (!edit) return { ...metric, shopValue: null, target: null, score: null, explanation: "Not on this scorecard.", edited: true };
-  const score = scoreMetric(edit.shopValue, edit.target, metric.higherIsBetter);
-  const meets = score >= 85;
-  return {
-    ...metric,
-    shopValue: edit.shopValue,
-    target: edit.target,
-    score,
-    explanation: meets ? "You entered these numbers; this meets the target." : "You entered these numbers; this misses the target.",
-    edited: true,
-  };
+/** Applies a hand correction to one KPI, or clears its numbers ("not on my scorecard"). */
+export function applyEdit(kpi: Kpi, edit: { value: number; target: number } | null): Kpi {
+  return edit ? { ...kpi, value: edit.value, target: edit.target, edited: true } : { ...kpi, value: null, target: null, edited: true };
 }

@@ -1,12 +1,12 @@
 import type { AnomalyResult } from "./anomaly";
 import { meetsTarget } from "./format";
-import { scoreMetric } from "./scoring";
-import { metricStatus, type Status } from "./status";
-import { isScored, type Estimate, type Metric, type MetricKey, type PhotoReview, type ScoredMetric } from "./types";
+import { kpiStatus, type Status } from "./status";
+import { isScored, type Estimate, type Kpi, type KpiMeasure, type KpiUnit, type PhotoReview, type ScoredKpi } from "./types";
 
 /**
- * How one estimate would move the shop's scorecard. Each scorecard metric is an average over the
- * repairs it covers, so adding this job moves it to (value × n + this job) / (n + 1).
+ * How one estimate would move one insurer's scorecard. Each KPI is an average over the repairs the
+ * card covers, so adding this job moves it to (value × n + this job) / (n + 1). Which KPIs an
+ * estimate can move comes from what each KPI measures (its `measure`), whatever the insurer calls it.
  *
  * Repair cost and the parts mix come straight from the estimate. Days in the shop, the chance of a
  * supplement and the chance of a late delivery are predictions: from the shop's own past jobs when
@@ -25,6 +25,8 @@ export interface JobPrediction {
   laborHours: number | null;
   /** Share of parts (by dollars when prices are shown) that aren't new OEM, 0–100. */
   altPartsShare: number | null;
+  aftermarketShare: number | null;
+  recycledShare: number | null;
   days: number | null;
   /** True when the days come from the shop's own past jobs (step 2). */
   daysFromHistory: boolean;
@@ -34,18 +36,17 @@ export interface JobPrediction {
   lateChance: number;
 }
 
-export interface MetricImpact {
-  key: MetricKey;
+export interface KpiImpact {
   label: string;
-  unit: Metric["unit"];
-  /** This job on its own, in the metric's unit; null when the estimate can't say (e.g. CSI). */
+  unit: KpiUnit;
+  /** This job on its own, in the KPI's unit; null when one estimate can't move it (CSI, quality). */
   jobValue: number | null;
   before: number;
   after: number;
   target: number;
   statusBefore: Status;
   statusAfter: Status;
-  /** "better", "worse" or "same", in the direction that matters for this metric. */
+  /** "better", "worse" or "same", in the direction that matters for this KPI. */
   direction: "better" | "worse" | "same";
 }
 
@@ -61,7 +62,7 @@ export interface Impact {
   checked: number;
   repairCount: number;
   job: JobPrediction;
-  metrics: MetricImpact[];
+  kpis: KpiImpact[];
   suggestions: Suggestion[];
 }
 
@@ -73,16 +74,17 @@ function laborHours(e: Estimate): number | null {
   return hours.every((h) => h === null) ? null : sum(hours);
 }
 
-function altPartsShare(e: Estimate): number | null {
+/** Share of the estimate's parts (0–100) that match `isType`. */
+function partsShare(e: Estimate, isType: (type: Estimate["parts"][number]["type"]) => boolean): number | null {
   const known = e.parts.filter((p) => p.type !== "unknown");
   if (known.length === 0) return null;
   const priced = known.filter((p) => p.price !== null && p.price > 0);
   // By dollars when every known part has a price, otherwise by count.
   if (priced.length === known.length) {
     const total = sum(priced.map((p) => p.price));
-    return total > 0 ? (sum(priced.filter((p) => p.type !== "oem").map((p) => p.price)) / total) * 100 : null;
+    return total > 0 ? (sum(priced.filter((p) => isType(p.type)).map((p) => p.price)) / total) * 100 : null;
   }
-  return (known.filter((p) => p.type !== "oem").length / known.length) * 100;
+  return (known.filter((p) => isType(p.type)).length / known.length) * 100;
 }
 
 function supplementChance(e: Estimate, history: AnomalyResult | null, missedItems: number): number {
@@ -110,7 +112,9 @@ export function predictJob(e: Estimate, history: AnomalyResult | null, missedIte
   const late = clamp(0.1 + Math.min(0.3, e.sublets.length * 0.1) + (e.parts.length > 15 ? 0.1 : 0) + supplement * 0.3, 0.05, 0.9);
   return {
     laborHours: hours,
-    altPartsShare: altPartsShare(e),
+    altPartsShare: partsShare(e, (t) => t !== "oem"),
+    aftermarketShare: partsShare(e, (t) => t === "aftermarket"),
+    recycledShare: partsShare(e, (t) => t === "used"),
     days: days === null ? null : Math.round(days * 10) / 10,
     daysFromHistory: Boolean(history) && hours !== null,
     supplementChance: supplement,
@@ -118,26 +122,44 @@ export function predictJob(e: Estimate, history: AnomalyResult | null, missedIte
   };
 }
 
-/** The job's own value for each metric, in the metric's unit. */
-function jobValue(key: MetricKey, e: Estimate, job: JobPrediction): number | null {
-  switch (key) {
-    case "avg_repair_cost":
+/** What each measure is counted in. A KPI in some other unit isn't compared, rather than compared wrongly. */
+const MEASURE_UNIT: Partial<Record<KpiMeasure, KpiUnit>> = {
+  repair_cost: "$",
+  cycle_time: "days",
+  supplement_rate: "%",
+  alt_parts: "%",
+  aftermarket_parts: "%",
+  recycled_parts: "%",
+  on_time: "%",
+  labor_hours: "hours",
+  refinish_hours: "hours",
+};
+
+/** This job's own value for a KPI, in the KPI's unit; null when one estimate can't move it. */
+function jobValue(k: Kpi, e: Estimate, job: JobPrediction): number | null {
+  if (MEASURE_UNIT[k.measure] !== k.unit) return null;
+  switch (k.measure) {
+    case "repair_cost":
       return e.total;
-    case "alt_parts_usage":
-      return job.altPartsShare;
     case "cycle_time":
       return job.days;
     case "supplement_rate":
       return job.supplementChance * 100;
-    case "on_time_delivery":
+    case "alt_parts":
+      return job.altPartsShare;
+    case "aftermarket_parts":
+      return job.aftermarketShare;
+    case "recycled_parts":
+      return job.recycledShare;
+    case "on_time":
       return (1 - job.lateChance) * 100;
-    case "customer_satisfaction":
+    case "labor_hours":
+      return job.laborHours;
+    case "refinish_hours":
+      return e.refinishHours;
+    default:
       return null;
   }
-}
-
-function withValue(m: ScoredMetric, value: number): ScoredMetric {
-  return { ...m, shopValue: value, score: scoreMetric(value, m.target, m.higherIsBetter) };
 }
 
 const GRADES: [number, Impact["grade"]][] = [
@@ -147,8 +169,8 @@ const GRADES: [number, Impact["grade"]][] = [
   [0.25, "D"],
 ];
 
-function suggestionsFor(e: Estimate, job: JobPrediction, metrics: ScoredMetric[]): Suggestion[] {
-  const target = (key: MetricKey) => metrics.find((m) => m.key === key)?.target;
+function suggestionsFor(e: Estimate, job: JobPrediction, kpis: ScoredKpi[]): Suggestion[] {
+  const target = (measure: KpiMeasure) => kpis.find((k) => k.measure === measure && MEASURE_UNIT[measure] === k.unit)?.target;
   const out: Suggestion[] = [];
   if (job.supplementChance >= 0.4) {
     out.push({
@@ -165,14 +187,17 @@ function suggestionsFor(e: Estimate, job: JobPrediction, metrics: ScoredMetric[]
       detail: `This job is predicted at about ${job.days} days against a ${daysTarget}-day target. Ordering all parts at once and booking sublets for day one keeps it from waiting.`,
     });
   }
-  const altTarget = target("alt_parts_usage");
-  if (job.altPartsShare !== null && altTarget !== undefined && job.altPartsShare < altTarget && e.parts.some((p) => p.type === "oem")) {
+  // Whichever parts-mix KPI this insurer tracks.
+  const parts = (["alt_parts", "aftermarket_parts", "recycled_parts"] as const)
+    .map((m) => ({ target: target(m), share: m === "alt_parts" ? job.altPartsShare : m === "aftermarket_parts" ? job.aftermarketShare : job.recycledShare }))
+    .find((p) => p.target !== undefined && p.share !== null && p.share < p.target);
+  if (parts && e.parts.some((p) => p.type === "oem")) {
     out.push({
       title: "Offer alternate parts where allowed",
       detail: "Where the insurer allows it, the carmaker's repair procedures permit it, and the customer agrees in writing, an alternate part raises your parts mix. Disclose non-OEM parts as your state requires.",
     });
   }
-  const costTarget = target("avg_repair_cost");
+  const costTarget = target("repair_cost");
   if (e.total !== null && costTarget !== undefined && e.total > costTarget && out.length < 3) {
     out.push({
       title: "Check for overlapping labor",
@@ -182,33 +207,32 @@ function suggestionsFor(e: Estimate, job: JobPrediction, metrics: ScoredMetric[]
   return out.slice(0, 3);
 }
 
-export function estimateImpact(metrics: Metric[], e: Estimate, history: AnomalyResult | null, repairCount: number, photoReview?: PhotoReview): Impact {
+export function estimateImpact(kpis: Kpi[], e: Estimate, history: AnomalyResult | null, repairCount: number, photoReview?: PhotoReview): Impact {
   const n = Math.max(1, Math.round(repairCount));
   const missed = photoReview?.findings.filter((f) => f.kind === "missing").length ?? 0;
   const job = predictJob(e, history, missed);
-  const scored = metrics.filter(isScored);
+  const scored = kpis.filter(isScored);
 
   let meets = 0;
   let checked = 0;
-  const impacts: MetricImpact[] = scored.map((m) => {
-    const value = jobValue(m.key, e, job);
-    const after = value === null ? m.shopValue : (m.shopValue * n + value) / (n + 1);
+  const impacts: KpiImpact[] = scored.map((k) => {
+    const value = jobValue(k, e, job);
+    const after = value === null ? k.value : (k.value * n + value) / (n + 1);
     if (value !== null) {
       checked++;
-      if (meetsTarget({ shopValue: value, target: m.target, higherIsBetter: m.higherIsBetter })) meets++;
+      if (meetsTarget({ value, target: k.target, higherIsBetter: k.higherIsBetter })) meets++;
     }
-    const delta = after - m.shopValue;
-    const better = m.higherIsBetter ? delta > 0 : delta < 0;
+    const delta = after - k.value;
+    const better = k.higherIsBetter ? delta > 0 : delta < 0;
     return {
-      key: m.key,
-      label: m.label,
-      unit: m.unit,
+      label: k.label,
+      unit: k.unit,
       jobValue: value,
-      before: m.shopValue,
+      before: k.value,
       after,
-      target: m.target,
-      statusBefore: metricStatus(m),
-      statusAfter: metricStatus(withValue(m, after)),
+      target: k.target,
+      statusBefore: kpiStatus(k),
+      statusAfter: kpiStatus({ ...k, value: after }),
       direction: Math.abs(delta) < 1e-6 ? "same" : better ? "better" : "worse",
     };
   });
@@ -225,7 +249,7 @@ export function estimateImpact(metrics: Metric[], e: Estimate, history: AnomalyR
       ]
     : [];
   const suggestions = [...addMissed, ...suggestionsFor(e, job, scored)].slice(0, 3);
-  return { grade, meets, checked, repairCount: n, job, metrics: impacts, suggestions };
+  return { grade, meets, checked, repairCount: n, job, kpis: impacts, suggestions };
 }
 
 /**
