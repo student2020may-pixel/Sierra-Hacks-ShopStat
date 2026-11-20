@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { EstimateExtractSchema, MetricSchema, OtherMetricSchema } from "./schemas";
+import type { EstimateExtractSchema, EstimatePhotoReviewSchema, MetricSchema, OtherMetricSchema } from "./schemas";
 
 export type Metric = z.infer<typeof MetricSchema>;
 export type MetricKey = Metric["key"];
@@ -38,10 +38,20 @@ export interface ScoreResponse {
 }
 
 export type Estimate = z.infer<typeof EstimateExtractSchema>;
+export type PhotoFinding = z.infer<typeof EstimatePhotoReviewSchema>["photoFindings"][number];
+
+/** What the damage photos showed against the estimate (step 3 with photos). */
+export interface PhotoReview {
+  photoCount: number;
+  photosShowDamage: boolean;
+  findings: PhotoFinding[];
+}
 
 /** Response body of POST /api/estimate. */
 export interface EstimateResponse {
   source: "ai" | "sample";
   estimate: Estimate;
+  /** Present when damage photos were sent with the estimate and the AI read them. */
+  photoReview?: PhotoReview;
   notice?: string;
 }

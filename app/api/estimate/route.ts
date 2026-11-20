@@ -2,15 +2,27 @@ import { NextResponse } from "next/server";
 import sampleEstimate from "@/data/sample-estimate.json";
 import { aiConfigured, aiJson } from "@/lib/ai";
 import { readUpload, withContents } from "@/lib/fileinput";
-import { EstimateExtractSchema } from "@/lib/schemas";
+import { EstimateExtractSchema, EstimatePhotoReviewSchema } from "@/lib/schemas";
 import { clip } from "@/lib/text";
-import type { Estimate, EstimateResponse } from "@/lib/types";
+import type { AiFile } from "@/lib/ai";
+import type { Estimate, EstimateResponse, PhotoReview } from "@/lib/types";
 import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 const MAX_BYTES = 4.5 * 1024 * 1024;
+const MAX_PHOTOS = 8;
+
+/** Added to the prompt when damage photos come with the estimate. */
+const photoInstructions = (count: number) => `
+
+The last ${count} image${count === 1 ? " is a damage photo" : `s are damage photos of the same car, in order: Photo 1 to Photo ${count}`}. Compare them with the estimate and fill photoFindings:
+- "missing": damage you can clearly see in a photo that no estimate line covers (a part to repair or replace, refinish, a blend, a related R&I).
+- "unsupported": an estimate line for an area that is clearly visible in the photos and looks undamaged. Skip areas the photos don't show.
+- "repair_or_replace": where the photos suggest the opposite of the estimate's choice (e.g. a small dent written as a replace, or a torn part written as a repair).
+For each: item (the part or operation), photo (its number, or null), severity ("high" for structural, safety or costly items, "medium", "low") and detail (one plain sentence).
+Be conservative: only report what you can actually see. Don't count hidden damage you can't see. If the photos don't clearly show the damaged area, set photosShowDamage to false and leave photoFindings empty.`;
 
 const SYSTEM_PROMPT = `You read auto body repair estimates (CCC ONE, Mitchell, Audatex or hand-written) for a body shop.
 
@@ -54,31 +66,65 @@ function tidy(e: Estimate): Estimate {
 
 export async function POST(req: Request) {
   let file: File | null = null;
+  let photoFiles: File[] = [];
   try {
-    const value = (await req.formData()).get("file");
+    const form = await req.formData();
+    const value = form.get("file");
     file = value instanceof File ? value : null;
+    photoFiles = form.getAll("photos").filter((p): p is File => p instanceof File && p.size > 0);
   } catch {
     return badRequest("We couldn't read that upload. Please try choosing the file again.");
   }
   if (!file || file.size === 0) return badRequest("Please choose your estimate file to upload.");
-  if (file.size > MAX_BYTES) return badRequest("That file is over 4.5 MB. Try a screenshot or a smaller file.");
+  if (photoFiles.length > MAX_PHOTOS) return badRequest(`Please add up to ${MAX_PHOTOS} damage photos.`);
+  if (file.size + photoFiles.reduce((n, p) => n + p.size, 0) > MAX_BYTES) {
+    return badRequest("The estimate and photos together are over 4.5 MB. Try fewer photos or a smaller estimate file.");
+  }
 
   const read = await readUpload(file);
   if (!read.ok) return badRequest(read.error);
+  const photos: AiFile[] = [];
+  for (const photo of photoFiles) {
+    const r = await readUpload(photo);
+    if (!r.ok || !r.file?.mimeType.startsWith("image/")) return badRequest(`"${clip(photo.name, 60)}" isn't a photo we can read. Use JPG, PNG, WebP or HEIC.`);
+    photos.push(r.file);
+  }
 
   if (!aiConfigured()) return sample("Reading estimates isn't set up yet (no API key), so we're showing the sample estimate.");
   if (!allowAiRequest(req)) return sample(LIMIT_NOTICE);
 
   try {
-    const parsed = await aiJson("api/estimate", EstimateExtractSchema, "estimate", {
-      instructions: SYSTEM_PROMPT,
-      text: withContents(read, file.name, "Read this repair estimate."),
-      files: read.file ? [read.file] : [],
-    });
+    const prompt = {
+      instructions: SYSTEM_PROMPT + (photos.length ? photoInstructions(photos.length) : ""),
+      text: withContents(read, file.name, photos.length ? "Read this repair estimate and compare it with the damage photos." : "Read this repair estimate."),
+      files: [...(read.file ? [read.file] : []), ...photos],
+    };
+    let parsed: Estimate | null;
+    let photoReview: PhotoReview | undefined;
+    if (photos.length) {
+      const review = await aiJson("api/estimate", EstimatePhotoReviewSchema, "estimate_review", prompt);
+      parsed = review;
+      if (review) {
+        photoReview = {
+          photoCount: photos.length,
+          photosShowDamage: review.photosShowDamage,
+          findings: review.photosShowDamage
+            ? review.photoFindings.slice(0, 20).map((f) => ({
+                ...f,
+                item: clip(f.item, 80),
+                detail: clip(f.detail, 200),
+                photo: f.photo !== null && Number.isInteger(f.photo) && f.photo >= 1 && f.photo <= photos.length ? f.photo : null,
+              }))
+            : [],
+        };
+      }
+    } else {
+      parsed = await aiJson("api/estimate", EstimateExtractSchema, "estimate", prompt);
+    }
     if (!parsed || (parsed.total === null && parsed.parts.length === 0)) {
       return badRequest("We couldn't find a repair estimate in that file. Try a clearer photo, the PDF, or a screenshot.");
     }
-    return NextResponse.json<EstimateResponse>({ source: "ai", estimate: tidy(parsed) });
+    return NextResponse.json<EstimateResponse>({ source: "ai", estimate: tidy(parsed), photoReview });
   } catch {
     return sample("We couldn't reach the AI just now, so we're showing the sample estimate.");
   }

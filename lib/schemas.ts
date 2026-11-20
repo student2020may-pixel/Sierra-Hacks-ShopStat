@@ -111,3 +111,23 @@ export const EstimateExtractSchema = z.object({
   /** Short phrases for signs of damage that usually isn't visible until teardown. */
   hiddenDamageSigns: z.array(z.string()),
 });
+
+export const FINDING_KINDS = ["missing", "unsupported", "repair_or_replace"] as const;
+export const SEVERITIES = ["high", "medium", "low"] as const;
+
+/** /api/estimate with damage photos: the estimate plus what the photos show that it doesn't (or vice versa). */
+export const EstimatePhotoReviewSchema = EstimateExtractSchema.extend({
+  /** False when the photos don't clearly show the damaged area, so there's nothing to compare. */
+  photosShowDamage: z.boolean(),
+  photoFindings: z.array(
+    z.object({
+      kind: z.enum(FINDING_KINDS),
+      /** The part or operation, e.g. "Left headlamp" or "Blend right front door". */
+      item: z.string(),
+      /** Which photo shows it, 1-based; null if it isn't tied to one photo. */
+      photo: z.number().nullable(),
+      severity: z.enum(SEVERITIES),
+      detail: z.string(),
+    }),
+  ),
+});
