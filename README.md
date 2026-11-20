@@ -29,9 +29,9 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
 
 | Page | What it does |
 | --- | --- |
-| `/assessment/scorecard` | **Step 1.** Upload the insurer scorecard in any format. The AI reads each metric's value and target, and how many repairs the card covers. Every number can be edited. |
+| `/assessment/scorecard` | **Step 1.** One scorecard per DRP (State Farm, CSAA, GEICO, other), in any format. The AI reads each KPI's value and target, the insurer, and how many repairs the card covers. Every number can be edited. |
 | `/assessment/jobs` | **Step 2.** Upload your last cars: CSV or Excel (read in the browser), or a PDF, photo or screenshot (read by the AI). Flags jobs that took far longer than their labor hours predict. |
-| `/assessment/estimate` | **Step 3.** Upload any estimate. The AI reads the repair lines; the grade and impact are computed in code. |
+| `/assessment/estimate` | **Step 3.** Upload any estimate. The AI reads the repair lines and the insurer; it's graded against that DRP's scorecard (or one you pick). The grade and impact are computed in code. |
 | `/mock-scorecard` | A fictional insurer scorecard for testing. |
 
 ## How an estimate is graded
