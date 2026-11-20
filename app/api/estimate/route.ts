@@ -73,7 +73,7 @@ export async function POST(req: Request) {
     const parsed = await aiJson("api/estimate", EstimateExtractSchema, "estimate", {
       instructions: SYSTEM_PROMPT,
       text: withContents(read, file.name, "Read this repair estimate."),
-      file: read.file,
+      files: read.file ? [read.file] : [],
     });
     if (!parsed || (parsed.total === null && parsed.parts.length === 0)) {
       return badRequest("We couldn't find a repair estimate in that file. Try a clearer photo, the PDF, or a screenshot.");

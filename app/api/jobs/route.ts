@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     const parsed = await aiJson("api/jobs", JobsExtractSchema, "jobs", {
       instructions: SYSTEM_PROMPT,
       text: withContents(read, file.name, "List the repair jobs in this file."),
-      file: read.file,
+      files: read.file ? [read.file] : [],
     });
     const jobs = parsed?.jobs ?? [];
     if (jobs.length === 0) {

@@ -31,6 +31,8 @@ export interface ScoreResponse {
   period?: string | null;
   /** Number of repairs the scorecard covers, if printed. */
   repair_count?: number | null;
+  /** Insurance company that issued the scorecard, if shown. */
+  insurer?: string | null;
   /** Friendly note shown when source is "sample". */
   notice?: string;
 }

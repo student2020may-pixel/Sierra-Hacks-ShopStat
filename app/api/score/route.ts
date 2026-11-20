@@ -34,6 +34,8 @@ explanation: one short sentence a busy shop owner understands — what the numbe
 
 Return all six metrics, in the order listed.
 
+insurer: the insurance company that issued the scorecard (e.g. "State Farm", "GEICO"), or null if it isn't shown.
+
 repair_count: how many repairs (claims, ROs, vehicles) the scorecard covers, as a plain number, or null if it isn't shown.
 
 period: the reporting period exactly as printed on the scorecard (e.g. "Q3 2026" or "Jul 1 – Sep 30, 2026"), or null if none is shown.
@@ -51,6 +53,7 @@ function sample(notice: string): NextResponse<ScoreResponse> {
     other_metrics: [],
     period: (scorecardData as Scorecard).period,
     repair_count: (scorecardData as Scorecard).repairsReviewed,
+    insurer: (scorecardData as Scorecard).insurer.name,
     notice,
   });
 }
@@ -123,7 +126,7 @@ export async function POST(req: Request) {
     const parsed = await aiJson("api/score", ScoreOutputSchema, "scorecard", {
       instructions: SYSTEM_PROMPT,
       text: withContents(read, file.name, "Score this shop's scorecard."),
-      file: read.file,
+      files: read.file ? [read.file] : [],
     });
 
     // null when the model refused or the output didn't match the schema.
@@ -137,6 +140,7 @@ export async function POST(req: Request) {
       metrics,
       other_metrics: normalizeOther(parsed.other_metrics),
       period: parsed.period ? clip(parsed.period, 60) : null,
+      insurer: parsed.insurer ? clip(parsed.insurer, 60) : null,
       repair_count: parsed.repair_count !== null && parsed.repair_count >= 1 && parsed.repair_count <= 100_000 ? Math.round(parsed.repair_count) : null,
     });
   } catch {
