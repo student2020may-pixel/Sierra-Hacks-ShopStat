@@ -1,108 +1,79 @@
 import { NextResponse } from "next/server";
-import scorecardData from "@/data/scorecard.json";
+import sample from "@/data/sample-scorecards.json";
 import { aiConfigured, aiJson } from "@/lib/ai";
 import { readUpload, withContents } from "@/lib/fileinput";
-import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
+import { KPI_MEASURES, KPI_UNITS, ScorecardsOutputSchema } from "@/lib/schemas";
+import { plausible } from "@/lib/scoring";
 import { clip } from "@/lib/text";
-import { METRIC_DEFS, METRIC_KEYS, ScoreOutputSchema } from "@/lib/schemas";
-import { plausible, scoreMetric } from "@/lib/scoring";
-import { isScored, type Metric, type OtherMetric, type Scorecard, type ScoreResponse } from "@/lib/types";
-import type { z } from "zod";
-import type { ExtractedMetricSchema } from "@/lib/schemas";
+import type { InsurerScorecard, Kpi, ScorecardsResponse } from "@/lib/types";
+import { allowAiRequest, LIMIT_NOTICE } from "@/lib/usage";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 // Vercel rejects request bodies over ~4.5 MB before this code runs; the upload page shrinks photos first.
 const MAX_BYTES = 4.5 * 1024 * 1024;
-const METRIC_LIST = METRIC_KEYS.map((key) => {
-  const d = METRIC_DEFS[key];
-  return `- ${key}: "${d.label}", unit "${d.unit}", ${d.higherIsBetter ? "higher" : "lower"} is better`;
-}).join("\n");
+/** Enough for any real DRP document, small enough that a misread can't flood the page. */
+const MAX_INSURERS = 8;
+const MAX_KPIS = 20;
 
-const SYSTEM_PROMPT = `You read insurer scorecards for auto body shops and explain them to shop owners in plain language.
+const SYSTEM_PROMPT = `You read DRP scorecards and performance reports for an auto body shop. One document often covers several insurers, each in its own section, table, page or column. Return one entry in "scorecards" per insurer.
 
-Look for these six metrics on the uploaded scorecard. Use exactly these keys, labels, units, and directions:
-${METRIC_LIST}
+Never mix insurers: each insurer's numbers come only from its own section. If the document covers a single insurer, return one entry.
 
-For each metric return the shop's value and the insurer's target as plain numbers (no symbols; 33% → 33, $3,410 → 3410).
-The scorecard may use different names for a metric (e.g. "repair cycle time", "CSI", "severity", "parts utilization") — map them.
+For each insurer:
+- insurer: the insurance company as printed (e.g. "GEICO", "Farmers Insurance", "CSAA"), or null if the document doesn't say.
+- period: the reporting period as printed, or null.
+- repair_count: how many repairs (claims, ROs, vehicles) this insurer's numbers cover, or null if not shown.
+- kpis: every performance KPI this insurer measures for the shop, in the order shown. Include quality, re-inspection, CSI and any other KPI, not only common ones. For each:
+  - label: the KPI's name exactly as printed.
+  - value: the shop's number, as a plain number (33% → 33, $3,410 → 3410), or null if not shown.
+  - target: the insurer's target, goal or benchmark for it, or null if none is shown.
+  - unit: one of ${KPI_UNITS.map((u) => `"${u}"`).join(", ")}. Use "/100" for scores out of 100, and "number" for anything else (ratings, counts).
+  - higherIsBetter: true if a higher number is better for the shop.
+  - measure: what it measures, whatever it's called:
+    "repair_cost" (severity, average repair cost or estimate total), "cycle_time" (days to repair, keys to keys, touch-to-delivery),
+    "supplement_rate" (share of jobs with supplements), "alt_parts" (all non-OEM parts), "aftermarket_parts", "recycled_parts" (used/LKQ),
+    "on_time" (delivered when promised), "labor_hours" (labor hours per estimate), "refinish_hours" (paint hours per estimate),
+    "satisfaction" (CSI, NPS, customer surveys), "quality" (re-inspection, comebacks, audits), or "other".
+  - note: one short sentence a busy shop owner understands: what the number means against the target.
 
-If a metric is NOT on the scorecard, do not guess or estimate it: set shopValue and target to null and set explanation to "Not on this scorecard." If the shop's value is shown but no target is, set target to null too.
+Only read what is printed; use null instead of guessing. Leave out shop details, ranks and totals across insurers.`;
 
-explanation: one short sentence a busy shop owner understands — what the number means compared with the target and whether it's helping or hurting. No jargon, no metric codes. Don't invent a score; just read the numbers.
-
-Return all six metrics, in the order listed.
-
-insurer: the insurance company that issued the scorecard (e.g. "State Farm", "GEICO"), or null if it isn't shown.
-
-repair_count: how many repairs (claims, ROs, vehicles) the scorecard covers, as a plain number, or null if it isn't shown.
-
-period: the reporting period exactly as printed on the scorecard (e.g. "Q3 2026" or "Jul 1 – Sep 30, 2026"), or null if none is shown.
-
-other_metrics: any OTHER performance metrics on the scorecard that matter to a body shop and aren't one of the six — for example touch time, comeback/redo rate, labor efficiency, photo estimate accuracy, rental days, total loss rate. For each: label as printed, value and target as plain numbers (null if not shown), unit as printed ("%", "$", "hours", "days", or "" if none), and note: one plain-language sentence on what it means for the shop. Leave out shop details, dates, rankings, and anything that isn't a performance metric. Return an empty array if there are none.`;
-
-/** At most this many "Also found" metrics, so a dense scorecard can't flood the page. */
-const MAX_OTHER_METRICS = 8;
-
-
-function sample(notice: string): NextResponse<ScoreResponse> {
-  return NextResponse.json({
-    source: "sample",
-    metrics: (scorecardData as Scorecard).metrics,
-    other_metrics: [],
-    period: (scorecardData as Scorecard).period,
-    repair_count: (scorecardData as Scorecard).repairsReviewed,
-    insurer: (scorecardData as Scorecard).insurer.name,
-    notice,
-  });
+function sampleResponse(notice: string): NextResponse<ScorecardsResponse> {
+  return NextResponse.json({ source: "sample", scorecards: sample.scorecards as InsurerScorecard[], notice });
 }
 
 function badRequest(error: string) {
   return NextResponse.json({ error }, { status: 400 });
 }
 
-/**
- * Returns the six metrics in canonical order with scores computed in code (lib/scoring.ts). A
- * metric the model skipped, returned with only some of its numbers, or read as an impossible value
- * becomes "not on this scorecard" (null numbers) — never a guess.
- */
-function normalize(extracted: z.infer<typeof ExtractedMetricSchema>[]): Metric[] {
-  return METRIC_KEYS.map((key) => {
-    const m = extracted.find((x) => x.key === key);
-    const d = METRIC_DEFS[key];
-    if (
-      !m ||
-      m.shopValue === null ||
-      m.target === null ||
-      !plausible(m.shopValue, d.unit) ||
-      !plausible(m.target, d.unit)
-    ) {
-      return { key, ...d, shopValue: null, target: null, score: null, explanation: "Not on this scorecard." };
-    }
-    return {
-      key,
-      ...d,
-      shopValue: m.shopValue,
-      target: m.target,
-      score: scoreMetric(m.shopValue, m.target, d.higherIsBetter),
-      explanation: clip(m.explanation, 240),
-    };
-  });
+/** Trims text and drops numbers that can't be real (a 142% rate), so they show as "not shown" instead. */
+function tidyKpi(k: Kpi): Kpi {
+  const unit = KPI_UNITS.includes(k.unit) ? k.unit : "number";
+  const num = (v: number | null) => (v !== null && plausible(v, unit) ? v : null);
+  return {
+    label: clip(k.label, 60),
+    value: num(k.value),
+    target: num(k.target),
+    unit,
+    higherIsBetter: k.higherIsBetter,
+    measure: KPI_MEASURES.includes(k.measure) ? k.measure : "other",
+    note: clip(k.note, 200),
+  };
 }
 
-function normalizeOther(others: OtherMetric[]): OtherMetric[] {
-  return others
-    .map((o) => ({
-      ...o,
-      label: clip(o.label, 60),
-      unit: clip(o.unit, 24),
-      note: clip(o.note, 200),
-      value: o.value !== null && Number.isFinite(o.value) ? o.value : null,
-      target: o.target !== null && Number.isFinite(o.target) ? o.target : null,
-    }))
-    .filter((o) => o.label && (o.value !== null || o.note))
-    .slice(0, MAX_OTHER_METRICS);
+function tidy(card: InsurerScorecard): InsurerScorecard {
+  const count = card.repair_count;
+  return {
+    insurer: card.insurer ? clip(card.insurer, 60) : null,
+    period: card.period ? clip(card.period, 60) : null,
+    repair_count: count !== null && count >= 1 && count <= 100_000 ? Math.round(count) : null,
+    kpis: card.kpis
+      .slice(0, MAX_KPIS)
+      .map(tidyKpi)
+      .filter((k) => k.label),
+  };
 }
 
 export async function POST(req: Request) {
@@ -119,31 +90,24 @@ export async function POST(req: Request) {
   const read = await readUpload(file);
   if (!read.ok) return badRequest(read.error);
 
-  if (!aiConfigured()) return sample("AI scoring isn't set up yet (no API key), so we're showing the sample scorecard.");
-  if (!allowAiRequest(req)) return sample(LIMIT_NOTICE);
+  if (!aiConfigured()) return sampleResponse("Reading scorecards isn't set up yet (no API key), so we're showing the sample scorecards.");
+  if (!allowAiRequest(req)) return sampleResponse(LIMIT_NOTICE);
 
   try {
-    const parsed = await aiJson("api/score", ScoreOutputSchema, "scorecard", {
+    const parsed = await aiJson("api/score", ScorecardsOutputSchema, "scorecards", {
       instructions: SYSTEM_PROMPT,
-      text: withContents(read, file.name, "Score this shop's scorecard."),
+      text: withContents(read, file.name, "Read every insurer's KPIs in this document."),
       files: read.file ? [read.file] : [],
     });
-
-    // null when the model refused or the output didn't match the schema.
-    if (!parsed) return sample("The AI couldn't read this file, so we're showing the sample scorecard.");
-    const metrics = normalize(parsed.metrics);
-    if (!metrics.some(isScored)) {
-      return sample("We couldn't find any of the six scorecard metrics in this file, so we're showing the sample scorecard.");
+    const scorecards = (parsed?.scorecards ?? [])
+      .slice(0, MAX_INSURERS)
+      .map(tidy)
+      .filter((c) => c.kpis.some((k) => k.value !== null));
+    if (scorecards.length === 0) {
+      return badRequest("We couldn't find any DRP KPIs in that file. Try a clearer photo, the PDF, or a screenshot.");
     }
-    return NextResponse.json<ScoreResponse>({
-      source: "ai",
-      metrics,
-      other_metrics: normalizeOther(parsed.other_metrics),
-      period: parsed.period ? clip(parsed.period, 60) : null,
-      insurer: parsed.insurer ? clip(parsed.insurer, 60) : null,
-      repair_count: parsed.repair_count !== null && parsed.repair_count >= 1 && parsed.repair_count <= 100_000 ? Math.round(parsed.repair_count) : null,
-    });
+    return NextResponse.json<ScorecardsResponse>({ source: "ai", scorecards });
   } catch {
-    return sample("We couldn't reach the AI just now, so we're showing the sample scorecard.");
+    return sampleResponse("We couldn't reach the AI just now, so we're showing the sample scorecards.");
   }
 }

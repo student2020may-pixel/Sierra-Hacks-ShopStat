@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const STEPS = [
-  { title: "DRP scorecards", body: "Upload the latest scorecard for each DRP: State Farm, CSAA, GEICO or another insurer, in any format." },
+  { title: "DRP scorecards", body: "Upload your scorecard document. Each insurer's section (CSAA, GEICO, Travelers, Farmers) is filed with its own KPIs." },
   { title: "Your last cars", body: "Upload your recent jobs: a CSV or Excel export, a PDF, or a screenshot." },
   { title: "Grade an estimate", body: "Upload any estimate. It's graded against the KPIs of the DRP it's written for, before you send it." },
 ];

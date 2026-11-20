@@ -3,72 +3,50 @@
 import { useEffect, useRef, useState } from "react";
 import Progress from "@/components/assessment/Progress";
 import StepNav from "@/components/assessment/StepNav";
-import MetricTable from "@/components/MetricTable";
+import KpiTable from "@/components/KpiTable";
 import Notice from "@/components/Notice";
-import OtherMetrics from "@/components/OtherMetrics";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
-import scorecardData from "@/data/scorecard.json";
+import sample from "@/data/sample-scorecards.json";
+import { loadCards, programFor, programName, PROGRAMS, removeCard, saveCard, type ProgramId, type SavedCard } from "@/lib/drp";
 import { shrinkImage } from "@/lib/image";
-import { loadCard, loadCards, programFor, programName, PROGRAMS, removeCard, saveCard, type ProgramId } from "@/lib/drp";
-import type { Metric, Scorecard, ScoreResponse } from "@/lib/types";
+import type { InsurerScorecard, Kpi, ScorecardsResponse, SlotCard } from "@/lib/types";
 
 /** Matches the server limit; Vercel rejects bigger bodies before our code runs. */
 const MAX_UPLOAD_BYTES = 4.5 * 1024 * 1024;
-/** A little longer than the server's own 40s AI timeout. */
+/** A little longer than the server's own AI timeouts. */
 const CLIENT_TIMEOUT_MS = 55_000;
 
-const sampleResult = (notice: string): ScoreResponse => ({
-  source: "sample",
-  metrics: (scorecardData as Scorecard).metrics,
-  other_metrics: [],
-  period: (scorecardData as Scorecard).period,
-  repair_count: (scorecardData as Scorecard).repairsReviewed,
-  insurer: (scorecardData as Scorecard).insurer.name,
-  notice,
-});
+const SAMPLE_SCORECARDS = sample.scorecards as InsurerScorecard[];
+
+/** What the last read did: which slots it filled, and sections for insurers without a slot. */
+interface ReadSummary {
+  filed: ProgramId[];
+  unmatched: InsurerScorecard[];
+  source: SlotCard["source"];
+  file: string;
+  notice?: string;
+}
 
 export default function ScorecardStep() {
-  const [program, setProgram] = useState<ProgramId>("state-farm");
-  /** Programs with a scorecard in this tab, for the check marks and the Next button. */
-  const [done, setDone] = useState<Set<ProgramId>>(new Set());
+  const [cards, setCards] = useState<Partial<Record<ProgramId, SavedCard>>>({});
+  const [selected, setSelected] = useState<ProgramId>("csaa");
   const [file, setFile] = useState<File | null>(null);
   const [dragging, setDragging] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<ScoreResponse | null>(null);
-  /** Name of the scorecard behind `result`, so it still shows after Back from step 2. */
-  const [resultName, setResultName] = useState<string | null>(null);
-  /** The scorecard names a different DRP's insurer than the one selected: offer to file it there. */
-  const [moveTo, setMoveTo] = useState<ProgramId | null>(null);
-  // Ignores responses from a request the user has since replaced (picked a new file or DRP mid-upload).
+  const [summary, setSummary] = useState<ReadSummary | null>(null);
+  /** Sample scorecards from an earlier visit count as done, but their tables show only once the sample is loaded again. */
+  const [revealed, setRevealed] = useState(false);
+  // Ignores responses from a request the user has since replaced (picked a new file mid-upload).
   const requestId = useRef(0);
 
-  function restore(id: ProgramId) {
-    const card = loadCard(id);
-    setFile(null);
-    setError(null);
-    setMoveTo(null);
-    setResultName(card?.file ?? null);
-    // A sample from an earlier visit counts as done but isn't shown until it's loaded again.
-    setResult(card && card.result.source !== "sample" ? card.result : null);
-  }
-
-  // Coming back to this step: restore the saved scorecards instead of starting over.
+  // Coming back to this step: show the saved scorecards instead of starting over.
   useEffect(() => {
-    const ids = Object.keys(loadCards()) as ProgramId[];
-    setDone(new Set(ids));
-    const first = ids[0] ?? "state-farm";
-    setProgram(first);
-    restore(first);
+    const saved = loadCards();
+    setCards(saved);
+    setSelected((Object.keys(saved) as ProgramId[])[0] ?? "csaa");
   }, []);
-
-  function selectProgram(id: ProgramId) {
-    requestId.current++;
-    setLoading(false);
-    setProgram(id);
-    restore(id);
-  }
 
   function pick(f: File | undefined) {
     if (!f) return;
@@ -76,75 +54,51 @@ export default function ScorecardStep() {
     setFile(f);
     setLoading(false);
     setError(null);
-    setResult(null);
-    setResultName(null);
-    setMoveTo(null);
+    setSummary(null);
   }
 
-  function show(id: ProgramId, data: ScoreResponse, name: string) {
-    setResult(data);
-    setResultName(name);
-    saveCard(id, data, name);
-    setDone((d) => new Set(d).add(id));
-    const detected = programFor(data.insurer);
-    setMoveTo(data.source === "ai" && detected && detected !== id ? detected : null);
+  /** Files each insurer's section into its DRP slot; sections for other insurers wait to be placed. */
+  function fileSections(sections: InsurerScorecard[], source: SlotCard["source"], name: string, notice?: string) {
+    const filed: ProgramId[] = [];
+    const unmatched: InsurerScorecard[] = [];
+    for (const section of sections) {
+      const id = programFor(section.insurer);
+      if (id) {
+        saveCard(id, { ...section, source }, name);
+        filed.push(id);
+      } else {
+        unmatched.push(section);
+      }
+    }
+    setCards(loadCards());
+    setRevealed(true);
+    setSummary({ filed, unmatched, source, file: name, notice });
+    if (filed.length) setSelected(filed[0]);
   }
 
-  /** Files the scorecard under the DRP its insurer belongs to. */
-  function moveCard() {
-    if (!moveTo || !result) return;
-    saveCard(moveTo, result, resultName);
-    removeCard(program);
-    setDone((d) => {
-      const next = new Set(d);
-      next.delete(program);
-      return next.add(moveTo);
-    });
-    setProgram(moveTo);
-    setMoveTo(null);
+  function fileUnmatched(index: number, id: ProgramId) {
+    if (!summary) return;
+    const section = summary.unmatched[index];
+    saveCard(id, { ...section, insurer: section.insurer ?? programName(id), source: summary.source }, summary.file);
+    setCards(loadCards());
+    setSummary({ ...summary, filed: [...summary.filed, id], unmatched: summary.unmatched.filter((_, i) => i !== index) });
+    setSelected(id);
   }
 
-  function removeCurrent() {
-    removeCard(program);
-    setDone((d) => {
-      const next = new Set(d);
-      next.delete(program);
-      return next;
-    });
-    restore(program);
-  }
-
-  function updateRepairCount(text: string) {
-    if (!result) return;
-    const n = Math.round(Number(text));
-    const next = { ...result, repair_count: Number.isFinite(n) && n >= 1 && n <= 100_000 ? n : null };
-    setResult(next);
-    saveCard(program, next);
-  }
-
-  /** A hand correction from the metrics table: swap it in and keep it for the next steps. */
-  function updateMetric(updated: Metric) {
-    if (!result) return;
-    const next = { ...result, metrics: result.metrics.map((m) => (m.key === updated.key ? updated : m)) };
-    setResult(next);
-    saveCard(program, next);
-  }
-
-  function loadSample() {
+  function loadSample(notice = "These are sample scorecards for a fictional shop, not real insurer numbers.") {
     requestId.current++;
     setFile(null);
     setLoading(false);
     setError(null);
-    show(program, sampleResult("This is the sample scorecard for Valley Auto Body, a fictional shop."), "Sample scorecard");
+    fileSections(SAMPLE_SCORECARDS, "sample", "Sample scorecards", notice);
   }
 
   async function submit() {
     if (!file || loading) return;
     const id = ++requestId.current;
-    const target = program;
     setLoading(true);
     setError(null);
-    setResult(null);
+    setSummary(null);
     try {
       const upload = await shrinkImage(file);
       if (upload.size > MAX_UPLOAD_BYTES) {
@@ -154,22 +108,45 @@ export default function ScorecardStep() {
       const body = new FormData();
       body.append("file", upload);
       const res = await fetch("/api/score", { method: "POST", body, signal: AbortSignal.timeout(CLIENT_TIMEOUT_MS) });
-      const data = await res.json().catch(() => null);
+      const data = (await res.json().catch(() => null)) as (ScorecardsResponse & { error?: string }) | null;
       if (id !== requestId.current) return;
       if (res.status === 400 && data?.error) {
         setError(data.error); // Something the user can fix, like the wrong file type.
-      } else if (res.ok && Array.isArray(data?.metrics)) {
-        show(target, { ...data, other_metrics: Array.isArray(data.other_metrics) ? data.other_metrics : [] } as ScoreResponse, file.name);
+      } else if (res.ok && Array.isArray(data?.scorecards)) {
+        fileSections(data.scorecards, data.source, data.source === "ai" ? file.name : "Sample scorecards", data.notice);
       } else {
         // The host timed out or rejected the request (e.g. an HTML 504/413 page), so keep going on the sample.
-        show(target, sampleResult("Reading took too long or the server had a problem, so we're showing the sample scorecard."), "Sample scorecard");
+        loadSample("Reading took too long or the server had a problem, so we're showing the sample scorecards.");
       }
     } catch {
-      if (id !== requestId.current) return;
-      show(target, sampleResult("We couldn't reach the server, so we're showing the sample scorecard. Check your connection and try again."), "Sample scorecard");
+      if (id === requestId.current) loadSample("We couldn't reach the server, so we're showing the sample scorecards. Check your connection and try again.");
     } finally {
       if (id === requestId.current) setLoading(false);
     }
+  }
+
+  const saved = cards[selected];
+  const card = saved && (saved.card.source !== "sample" || revealed) ? saved.card : null;
+
+  function update(next: SlotCard) {
+    saveCard(selected, next);
+    setCards(loadCards());
+  }
+
+  /** A hand correction from the KPI table: swap it in and keep it for the next steps. */
+  function updateKpi(index: number, kpi: Kpi) {
+    if (card) update({ ...card, kpis: card.kpis.map((k, i) => (i === index ? kpi : k)) });
+  }
+
+  function updateRepairCount(text: string) {
+    if (!card) return;
+    const n = Math.round(Number(text));
+    update({ ...card, repair_count: Number.isFinite(n) && n >= 1 && n <= 100_000 ? n : null });
+  }
+
+  function removeSelected() {
+    removeCard(selected);
+    setCards(loadCards());
   }
 
   return (
@@ -177,34 +154,13 @@ export default function ScorecardStep() {
       <Progress step={1} />
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Upload your DRP scorecards</h1>
       <p className="mt-2 text-bone/70">
-        One per insurer. Pick the DRP, then upload its latest scorecard in any format. Each estimate is graded against the
-        scorecard of the insurer it&apos;s written for.
-      </p>
-      <p className="mt-2 text-sm text-muted">
-        Insurers send these as a PDF or through their online portal. A photo, screenshot, spreadsheet or Word document works too.
+        Upload your scorecard document in any format. If it covers several insurers, each insurer&apos;s section is filed into
+        its own slot, with that insurer&apos;s own KPIs and targets.
       </p>
       <p className="mt-1 text-sm text-muted">
         <span className="font-semibold text-bone/70">Your file:</span> sent to OpenAI (or Google Gemini as a backup) only to read the
         numbers, and not saved by ShopStats. Your results stay in this browser tab.
       </p>
-
-      <div className="mt-6 flex flex-wrap gap-2" role="tablist" aria-label="DRP">
-        {PROGRAMS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            role="tab"
-            aria-selected={program === p.id}
-            onClick={() => selectProgram(p.id)}
-            className={`pressable rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
-              program === p.id ? "border-gold bg-gold/15 text-gold" : "border-white/15 text-bone/75 hover:border-white/30"
-            }`}
-          >
-            {p.name}
-            {done.has(p.id) && <span className="ml-1.5 text-success-soft">✓</span>}
-          </button>
-        ))}
-      </div>
 
       <label
         onDragOver={(e) => {
@@ -217,7 +173,7 @@ export default function ScorecardStep() {
           setDragging(false);
           pick(e.dataTransfer.files[0]);
         }}
-        className={`pressable mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-12 text-center active:scale-[0.99] ${
+        className={`pressable mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed px-4 py-10 text-center active:scale-[0.99] ${
           dragging ? "border-gold bg-gold/10" : "border-white/20 bg-night-2 hover:border-gold/60"
         }`}
       >
@@ -229,44 +185,29 @@ export default function ScorecardStep() {
             e.target.value = ""; // lets the same file be picked again after an error
           }}
         />
-        {file ? (
-          <>
-            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{file.name}</p>
-            <p className="mt-1 text-sm text-muted">
-              {file.size >= 1024 * 1024 ? `${(file.size / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.round(file.size / 1024))} KB`} ·{" "}
-              tap to choose another
-            </p>
-          </>
-        ) : resultName ? (
-          <>
-            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{resultName}</p>
-            <p className="mt-1 text-sm text-muted">Read · tap to choose a different file</p>
-          </>
-        ) : (
-          <>
-            <p className="font-medium text-bone">Tap to choose your {programName(program)} scorecard, or drag it here</p>
-            <p className="mt-1 text-sm text-muted">PDF, photo, screenshot, Excel, Word or any other file · up to 4.5 MB</p>
-          </>
-        )}
+        <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{file ? file.name : "Tap to choose your scorecard document, or drag it here"}</p>
+        <p className="mt-1 text-sm text-muted">
+          {file ? "Tap to choose another" : "One file for all your DRPs, or one per insurer · PDF, photo, screenshot, Excel or Word · up to 4.5 MB"}
+        </p>
       </label>
 
       <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
         <button
           onClick={submit}
           disabled={!file || loading}
-          className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10"
+          className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted"
         >
-          Read my scorecard
+          Read scorecards
         </button>
         <button
           type="button"
-          onClick={loadSample}
+          onClick={() => loadSample()}
           disabled={loading}
           className="pressable rounded-full border border-white/20 bg-transparent px-5 py-3 font-semibold text-bone/85 hover:bg-white/[0.03] disabled:opacity-50"
         >
-          Try with sample scorecard
+          Try with sample scorecards
         </button>
-        {loading && <Spinner label="Reading your scorecard… about 10–20 seconds." />}
+        {loading && <Spinner label="Reading every insurer's KPIs… about 10–30 seconds." />}
       </div>
 
       {error && (
@@ -275,58 +216,83 @@ export default function ScorecardStep() {
         </div>
       )}
 
-      {loading && (
-        <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" aria-hidden>
-          {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="h-52" />
+      {summary && (
+        <div className="mt-6 space-y-3 animate-enter">
+          {summary.notice && <Notice kind="info">{summary.notice}</Notice>}
+          {summary.filed.length > 0 && (
+            <p className="text-sm text-bone/80">
+              Filed {summary.filed.length === 1 ? "1 insurer" : `${summary.filed.length} insurers`}:{" "}
+              <span className="text-bone">{summary.filed.map(programName).join(", ")}</span>.
+            </p>
+          )}
+          {summary.unmatched.map((section, i) => (
+            <UnmatchedSection key={`${section.insurer}-${i}`} section={section} onFile={(id) => fileUnmatched(i, id)} />
           ))}
         </div>
       )}
 
-      {result && (
+      {loading && (
+        <div className="mt-10 space-y-3" aria-hidden>
+          <Skeleton className="h-10" />
+          <Skeleton className="h-64" />
+        </div>
+      )}
+
+      {!loading && (
         <section className="mt-10">
-          {moveTo && (
-            <div className="mb-6 animate-enter">
-              <Notice kind="info">
-                This looks like a {programName(moveTo)} scorecard{result.insurer ? ` (${result.insurer})` : ""}.{" "}
-                <button type="button" onClick={moveCard} className="pressable font-semibold text-gold underline">
-                  Save it under {programName(moveTo)}
-                  {done.has(moveTo) ? ", replacing the one there" : ""}
+          <div className="flex flex-wrap gap-2" role="tablist" aria-label="DRP">
+            {PROGRAMS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                role="tab"
+                aria-selected={selected === p.id}
+                onClick={() => setSelected(p.id)}
+                className={`pressable rounded-full border px-4 py-2 text-sm font-semibold transition-colors ${
+                  selected === p.id ? "border-gold bg-gold/15 text-gold" : "border-white/15 text-bone/75 hover:border-white/30"
+                }`}
+              >
+                {p.name}
+                {cards[p.id] && <span className="ml-1.5 text-success-soft">✓</span>}
+              </button>
+            ))}
+          </div>
+
+          {card ? (
+            <div className="mt-5">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                <h2 className="font-serif text-3xl font-normal text-bone">{programName(selected)} KPIs</h2>
+                <button type="button" onClick={removeSelected} className="pressable text-xs text-muted underline">
+                  Remove
                 </button>
-              </Notice>
+              </div>
+              <p className="mt-1 text-sm text-bone/70">
+                {[card.insurer && `As printed: ${card.insurer}`, card.period, saved?.file && `from ${saved.file}`].filter(Boolean).join(" · ")}. If a
+                number is wrong, tap <span className="font-semibold text-gold">Edit</span>.
+              </p>
+              <div className="mt-4">
+                <KpiTable kpis={card.kpis} onChange={updateKpi} />
+              </div>
+              <label className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-bone/80">
+                {programName(selected)} repairs this scorecard covers
+                <input
+                  key={`${selected}-${card.repair_count ?? "none"}`}
+                  defaultValue={card.repair_count ?? ""}
+                  placeholder="e.g. 40"
+                  inputMode="numeric"
+                  onBlur={(e) => updateRepairCount(e.target.value)}
+                  className="w-24 rounded-md border border-white/20 bg-night px-2.5 py-1.5 text-base text-bone tabular-nums focus:border-gold focus:outline-none"
+                />
+                <span className="text-xs text-muted">Used to work out how much one estimate moves these averages.</span>
+              </label>
             </div>
+          ) : (
+            <p className="mt-5 text-sm text-muted">
+              {saved
+                ? `A sample ${programName(selected)} scorecard is saved here. Load the sample again to see it.`
+                : `No ${programName(selected)} scorecard yet. Upload a document that includes ${programName(selected)}.`}
+            </p>
           )}
-          {result.notice && (
-            <div className="mb-6 animate-enter">
-              <Notice kind="info">{result.notice}</Notice>
-            </div>
-          )}
-          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-            <h2 className="font-serif text-3xl font-normal text-bone">Your {programName(program)} scorecard</h2>
-            <button type="button" onClick={removeCurrent} className="pressable text-xs text-muted underline">
-              Remove
-            </button>
-          </div>
-          <p className="mt-1 text-sm text-bone/70">
-            Check the numbers we read. If one is wrong, tap <span className="font-semibold text-gold">Edit</span> to fix it.
-            {result.period && <> Period: <span className="text-bone">{result.period}</span>.</>}
-          </p>
-          <div className="mt-4">
-            <MetricTable metrics={result.metrics} onChange={updateMetric} />
-          </div>
-          <label className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-bone/80">
-            Repairs this scorecard covers
-            <input
-              key={result.repair_count ?? "none"}
-              defaultValue={result.repair_count ?? ""}
-              placeholder="e.g. 40"
-              inputMode="numeric"
-              onBlur={(e) => updateRepairCount(e.target.value)}
-              className="w-24 rounded-md border border-white/20 bg-night px-2.5 py-1.5 text-base text-bone tabular-nums focus:border-gold focus:outline-none"
-            />
-            <span className="text-xs text-muted">Used to work out how much one estimate moves your averages.</span>
-          </label>
-          <OtherMetrics metrics={result.other_metrics} />
         </section>
       )}
 
@@ -334,10 +300,37 @@ export default function ScorecardStep() {
         next={{
           href: "/assessment/jobs",
           label: "Next",
-          ready: done.size > 0 && !loading,
+          ready: Object.keys(cards).length > 0 && !loading,
           hint: "Upload a scorecard or try the sample to continue.",
         }}
       />
     </main>
+  );
+}
+
+/** A section for an insurer that isn't one of the four DRPs: file it under one, or leave it out. */
+function UnmatchedSection({ section, onFile }: { section: InsurerScorecard; onFile: (id: ProgramId) => void }) {
+  const [target, setTarget] = useState<ProgramId>("csaa");
+  return (
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-line bg-night-2 px-4 py-3 text-sm">
+      <span className="text-bone/80">
+        <span className="font-semibold [overflow-wrap:anywhere] text-bone">{section.insurer ?? "A section with no insurer name"}</span> (
+        {section.kpis.length} KPI{section.kpis.length === 1 ? "" : "s"}) isn&apos;t one of your DRPs. File it under
+      </span>
+      <select
+        value={target}
+        onChange={(e) => setTarget(e.target.value as ProgramId)}
+        className="rounded-md border border-white/20 bg-night px-2 py-1 text-base text-bone focus:border-gold focus:outline-none"
+      >
+        {PROGRAMS.map((p) => (
+          <option key={p.id} value={p.id}>
+            {p.name}
+          </option>
+        ))}
+      </select>
+      <button type="button" onClick={() => onFile(target)} className="pressable font-semibold text-gold underline">
+        File it
+      </button>
+    </div>
   );
 }

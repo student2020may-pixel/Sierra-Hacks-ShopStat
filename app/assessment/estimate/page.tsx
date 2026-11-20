@@ -10,7 +10,7 @@ import sampleEstimate from "@/data/sample-estimate.json";
 import type { AnomalyResult } from "@/lib/anomaly";
 import { formatValue } from "@/lib/format";
 import { shrinkImage } from "@/lib/image";
-import { DEFAULT_REPAIR_COUNT, estimateImpact, photoGrade, type Impact, type MetricImpact } from "@/lib/impact";
+import { DEFAULT_REPAIR_COUNT, estimateImpact, photoGrade, type Impact, type KpiImpact } from "@/lib/impact";
 import { STATUS_STYLES } from "@/lib/status";
 import { loadCards, programFor, programName, PROGRAMS, type ProgramId, type SavedCard } from "@/lib/drp";
 import { isJobsResult, JOBS_KEY, loadValid } from "@/lib/storage";
@@ -132,17 +132,18 @@ const GRADE_COLOR: Record<Impact["grade"], string> = {
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 
 /** One job barely moves an average over many repairs, so the change gets more precision than the values. */
-function formatDelta(delta: number, unit: MetricImpact["unit"]): string {
+function formatDelta(delta: number, unit: KpiImpact["unit"]): string {
   if (Math.abs(delta) < 0.005) return "no change";
   const sign = delta > 0 ? "+" : "−";
   const abs = Math.abs(delta);
   if (unit === "$") return `${sign}$${abs < 1 ? abs.toFixed(2) : Math.round(abs).toLocaleString("en-US")}`;
   if (unit === "days") return `${sign}${abs.toFixed(2)} days`;
+  if (unit === "hours") return `${sign}${abs.toFixed(2)} hrs`;
   if (unit === "%") return `${sign}${abs.toFixed(2)} pts`;
   return `${sign}${abs.toFixed(2)}`;
 }
 
-function ImpactRow({ m }: { m: MetricImpact }) {
+function ImpactRow({ m }: { m: KpiImpact }) {
   const changed = m.statusAfter !== m.statusBefore;
   const color = m.direction === "worse" ? "text-danger-soft" : m.direction === "better" ? "text-success-soft" : "text-bone/70";
   return (
@@ -277,9 +278,9 @@ export default function EstimateStep() {
   // Grade against the DRP the estimate is written for, when step 1 has that scorecard.
   const estimateProgram = programFor(estimate?.data.insurer);
   const program = (chosen && cards[chosen] ? chosen : null) ?? (estimateProgram && cards[estimateProgram] ? estimateProgram : null) ?? available[0] ?? null;
-  const score = program ? cards[program]!.result : null;
+  const score = program ? cards[program]!.card : null;
   const repairCount = score?.repair_count ?? DEFAULT_REPAIR_COUNT;
-  const impact = score && estimate ? estimateImpact(score.metrics, estimate.data, history, repairCount, estimate.photoReview) : null;
+  const impact = score && estimate ? estimateImpact(score.kpis, estimate.data, history, repairCount, estimate.photoReview) : null;
   const e = estimate?.data;
   const oem = e?.parts.filter((p) => p.type === "oem").length ?? 0;
   const alt = e?.parts.filter((p) => p.type !== "oem" && p.type !== "unknown").length ?? 0;
@@ -449,15 +450,15 @@ export default function EstimateStep() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-line text-left text-xs text-muted uppercase">
-                        <th className="px-4 py-2.5 font-semibold">Metric</th>
+                        <th className="px-4 py-2.5 font-semibold">KPI</th>
                         <th className="hidden px-3 py-2.5 text-right font-semibold sm:table-cell">This job</th>
                         <th className="px-3 py-2.5 text-right font-semibold">Now → after</th>
                         <th className="hidden px-4 py-2.5 text-right font-semibold sm:table-cell">Target</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {impact.metrics.map((m) => (
-                        <ImpactRow key={m.key} m={m} />
+                      {impact.kpis.map((m, i) => (
+                        <ImpactRow key={`${m.label}-${i}`} m={m} />
                       ))}
                     </tbody>
                   </table>

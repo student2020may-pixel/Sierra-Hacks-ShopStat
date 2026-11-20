@@ -1,0 +1,56 @@
+{
+  "shop": "Valley Auto Body",
+  "title": "DRP performance summary",
+  "period": "Q3 2026 (Jul 1 – Sep 30)",
+  "scorecards": [
+    {
+      "insurer": "CSAA",
+      "period": "Q3 2026",
+      "repair_count": 48,
+      "kpis": [
+        { "label": "Cycle time (keys to keys)", "value": 9.4, "target": 8.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "Cars stay about a day and a half longer than CSAA wants." },
+        { "label": "Severity", "value": 3620, "target": 3500, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "The average repair costs a little more than CSAA's goal." },
+        { "label": "Supplement rate", "value": 31, "target": 25, "unit": "%", "higherIsBetter": false, "measure": "supplement_rate", "note": "Almost a third of jobs need a revised estimate." },
+        { "label": "Customer satisfaction", "value": 92, "target": 90, "unit": "/100", "higherIsBetter": true, "measure": "satisfaction", "note": "Customers are happier than the target." },
+        { "label": "Alternate parts usage", "value": 34, "target": 35, "unit": "%", "higherIsBetter": true, "measure": "alt_parts", "note": "Just under CSAA's goal for non-OEM parts." }
+      ]
+    },
+    {
+      "insurer": "GEICO",
+      "period": "Q3 2026",
+      "repair_count": 61,
+      "kpis": [
+        { "label": "Repair cycle time", "value": 8.1, "target": 7.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "About a day over GEICO's goal." },
+        { "label": "Average severity", "value": 3290, "target": 3400, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "Repairs cost less than GEICO's goal." },
+        { "label": "Quality (re-inspection score)", "value": 94, "target": 95, "unit": "/100", "higherIsBetter": true, "measure": "quality", "note": "Re-inspections are just under the target." },
+        { "label": "Labor hours per estimate", "value": 19.5, "target": 18.0, "unit": "hours", "higherIsBetter": false, "measure": "labor_hours", "note": "Estimates carry more labor than GEICO's average." },
+        { "label": "Rental days", "value": 9.2, "target": 8.5, "unit": "days", "higherIsBetter": false, "measure": "other", "note": "Customers keep rentals a bit longer than the goal." }
+      ]
+    },
+    {
+      "insurer": "Travelers",
+      "period": "Q3 2026",
+      "repair_count": 23,
+      "kpis": [
+        { "label": "Cycle time", "value": 7.6, "target": 8.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "Faster than Travelers' goal." },
+        { "label": "Severity", "value": 3910, "target": 3700, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "The average repair costs more than Travelers' goal." },
+        { "label": "Recycled parts usage", "value": 12, "target": 15, "unit": "%", "higherIsBetter": true, "measure": "recycled_parts", "note": "Fewer used parts than Travelers wants." },
+        { "label": "Refinish hours per estimate", "value": 7.8, "target": 7.0, "unit": "hours", "higherIsBetter": false, "measure": "refinish_hours", "note": "Estimates carry more paint time than the goal." },
+        { "label": "Customer satisfaction", "value": 91, "target": 90, "unit": "/100", "higherIsBetter": true, "measure": "satisfaction", "note": "Just above the target." }
+      ]
+    },
+    {
+      "insurer": "Farmers",
+      "period": "Q3 2026",
+      "repair_count": 35,
+      "kpis": [
+        { "label": "Days to repair", "value": 10.2, "target": 9.0, "unit": "days", "higherIsBetter": false, "measure": "cycle_time", "note": "Over a day longer than Farmers' goal." },
+        { "label": "Severity", "value": 3480, "target": 3450, "unit": "$", "higherIsBetter": false, "measure": "repair_cost", "note": "Slightly above Farmers' goal." },
+        { "label": "Supplement frequency", "value": 28, "target": 30, "unit": "%", "higherIsBetter": false, "measure": "supplement_rate", "note": "Fewer supplements than the target." },
+        { "label": "Aftermarket parts usage", "value": 22, "target": 25, "unit": "%", "higherIsBetter": true, "measure": "aftermarket_parts", "note": "Below Farmers' goal for aftermarket parts." },
+        { "label": "On-time delivery", "value": 84, "target": 90, "unit": "%", "higherIsBetter": true, "measure": "on_time", "note": "Some cars go back later than promised." },
+        { "label": "Quality", "value": 97, "target": 95, "unit": "/100", "higherIsBetter": true, "measure": "quality", "note": "Quality is above the target." }
+      ]
+    }
+  ]
+}
