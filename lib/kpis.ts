@@ -23,7 +23,11 @@ export interface KpiDef {
   confirmed: boolean;
   /** Repair-size bands for the cycle time KPIs: the estimate total must fall in [min, max). */
   band?: [number, number | null];
+  /** The category box it sits under on the CCC dashboard, where known. */
+  category?: KpiCategory;
 }
+
+export type KpiCategory = "Estimating" | "Cycle Time";
 
 const k = (id: string, name: string, unit: KpiUnit, higherIsBetter: boolean, kind: KpiKind, confirmed = false, band?: KpiDef["band"]): KpiDef => ({
   id,
@@ -52,15 +56,15 @@ export const KPIS: KpiDef[] = [
   k("overwrite_pct", "Avg Overwrite % of TCOR", "%", false, "estimate"),
 
   // Predicted from the estimate.
-  k("vivo_days", "Vehicle In to Vehicle Out Days Avg", "days", false, "predicted"),
-  k("vivo_0_2k", "Vehicle In to Vehicle Out Days Avg $0 to $2k", "days", false, "predicted", false, [0, 2_000]),
-  k("vivo_0_3k", "Vehicle In to Vehicle Out Days Avg $0 to $3k", "days", false, "predicted", false, [0, 3_000]),
-  k("vivo_2_4k", "Vehicle In to Vehicle Out Days Avg $2k to $4k", "days", false, "predicted", false, [2_000, 4_000]),
-  k("vivo_3_6k", "Vehicle In to Vehicle Out Days Avg $3k to $6k", "days", false, "predicted", false, [3_000, 6_000]),
-  k("vivo_4_6k", "Vehicle In to Vehicle Out Days Avg $4k - $6k", "days", false, "predicted", false, [4_000, 6_000]),
-  k("vivo_6_9k", "Vehicle In to Vehicle Out Days Avg $6K to $9K", "days", false, "predicted", false, [6_000, 9_000]),
-  k("vivo_6k_plus", "Vehicle In to Vehicle Out Days Avg $6k+", "days", false, "predicted", false, [6_000, null]),
-  k("vivo_9_20k", "Vehicle In to Vehicle Out Days Avg $9K to $20K", "days", false, "predicted", false, [9_000, 20_000]),
+  k("vivo_days", "Vehicle In to Vehicle Out Days Avg", "days", false, "predicted", true),
+  k("vivo_0_2k", "Vehicle In to Vehicle Out Days Avg $0 to $2k", "days", false, "predicted", true, [0, 2_000]),
+  k("vivo_0_3k", "Vehicle In to Vehicle Out Days Avg $0 to $3k", "days", false, "predicted", true, [0, 3_000]),
+  k("vivo_2_4k", "Vehicle In to Vehicle Out Days Avg $2k to $4k", "days", false, "predicted", true, [2_000, 4_000]),
+  k("vivo_3_6k", "Vehicle In to Vehicle Out Days Avg $3k to $6k", "days", false, "predicted", true, [3_000, 6_000]),
+  k("vivo_4_6k", "Vehicle In to Vehicle Out Days Avg $4k - $6k", "days", false, "predicted", true, [4_000, 6_000]),
+  k("vivo_6_9k", "Vehicle In to Vehicle Out Days Avg $6K to $9K", "days", false, "predicted", true, [6_000, 9_000]),
+  k("vivo_6k_plus", "Vehicle In to Vehicle Out Days Avg $6k+", "days", false, "predicted", true, [6_000, null]),
+  k("vivo_9_20k", "Vehicle In to Vehicle Out Days Avg $9K to $20K", "days", false, "predicted", true, [9_000, 20_000]),
   k("true_supplements", "Avg # of True Supplements per Claim", "number", false, "predicted"),
   k("claims_true_supplement_pct", "% of Claims with True Supplement", "%", false, "predicted"),
   k("claims_supplement_request_pct", "% of Claims with Supplement Change Requested", "%", false, "predicted"),
@@ -84,6 +88,14 @@ export const KPIS: KpiDef[] = [
   k("survey_on_time_pct", "Survey % of On Time Delivery", "%", true, "reference"),
   k("surveys_requested_pct", "% of Repairs with Surveys Requested", "%", true, "reference"),
 ];
+
+// Confirmed by the shop: the dashboard's Estimating box holds these four, and every Vehicle In to
+// Vehicle Out KPI is a Cycle Time KPI.
+const ESTIMATING = new Set(["labor_amount", "part_amount", "repair_hours_claim", "repair_pct_sheet_metal_a"]);
+for (const d of KPIS) {
+  if (ESTIMATING.has(d.id)) d.category = "Estimating";
+  else if (d.id.startsWith("vivo_")) d.category = "Cycle Time";
+}
 
 export const KPI_IDS = KPIS.map((d) => d.id) as [string, ...string[]];
 export const KPI_NAMES = KPIS.map((d) => d.name) as [string, ...string[]];

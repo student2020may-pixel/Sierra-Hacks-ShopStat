@@ -92,6 +92,7 @@ export default function KpiTable({ kpis, onChange }: { kpis: Kpi[]; onChange: (k
                   <td className="px-4 py-3">
                     <span className="font-medium [overflow-wrap:anywhere] text-bone">{k.label}</span>
                     {k.edited && <span className="ml-2 text-xs text-gold">edited</span>}
+                    {k.category && <span className="mt-0.5 block text-xs text-gold/80">{k.category}</span>}
                     {!k.confirmed && (
                       <span className="mt-0.5 block text-xs text-muted" title="The unit or which way is better is our guess from the KPI name.">
                         unconfirmed
