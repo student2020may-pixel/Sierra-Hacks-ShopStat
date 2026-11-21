@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { KpiKind } from "./kpis";
+import type { KpiCategory, KpiKind } from "./kpis";
 import type { EstimateExtractSchema, EstimatePhotoReviewSchema, KPI_UNITS, ScorecardReadSchema } from "./schemas";
 
 export type KpiUnit = (typeof KPI_UNITS)[number];
@@ -11,6 +11,8 @@ export interface Kpi {
   unit: KpiUnit;
   higherIsBetter: boolean;
   kind: KpiKind;
+  /** Its box on the CCC dashboard (Estimating, Cycle Time), where known. */
+  category?: KpiCategory;
   /** False when the unit or direction is a guess (lib/kpis.ts). */
   confirmed: boolean;
   value: number | null;

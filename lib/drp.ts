@@ -53,6 +53,7 @@ export function slotKpis(card: SlotCard | null): Kpi[] {
       unit: d.unit,
       higherIsBetter: d.higherIsBetter,
       kind: d.kind,
+      category: d.category,
       confirmed: d.confirmed,
       value: v?.value ?? null,
       target: v?.target ?? null,
