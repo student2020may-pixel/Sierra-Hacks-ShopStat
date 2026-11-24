@@ -1,5 +1,5 @@
 import type { AnomalyResult } from "./anomaly";
-import { meetsTarget } from "./format";
+import { formatValue, meetsTarget } from "./format";
 import { kpiStatus, type Status } from "./status";
 import { kpiById, type KpiKind } from "./kpis";
 import { isScored, type Estimate, type Kpi, type KpiUnit, type PhotoReview, type ScoredKpi } from "./types";
@@ -56,8 +56,22 @@ export interface Suggestion {
   detail: string;
 }
 
+/** One strength or area to improve, in plain words. */
+export interface Point {
+  title: string;
+  detail: string;
+}
+
 export interface Impact {
   grade: "A" | "B" | "C" | "D" | "F";
+  /** Overall direction on this insurer's scorecard, from how many graded KPIs move the right or wrong way. */
+  effect: "positive" | "negative" | "mixed" | "neutral";
+  better: number;
+  worse: number;
+  /** KPIs where this claim beats the insurer's target. */
+  strengths: Point[];
+  /** KPIs where this claim misses the target (worst first), and damage the photos show is missing. */
+  improvements: Point[];
   /** How many of the job's own numbers meet the insurer's targets, out of how many could be checked. */
   meets: number;
   checked: number;
@@ -264,7 +278,8 @@ export function estimateImpact(kpis: Kpi[], e: Estimate, history: AnomalyResult 
       ]
     : [];
   const suggestions = [...addMissed, ...suggestionsFor(e, job, impacts)].slice(0, 3);
-  return { grade, meets, checked, repairCount: n, job, kpis: impacts, suggestions };
+  const { effect, better, worse, strengths, improvements } = summarize(impacts, photoReview);
+  return { grade, effect, better, worse, strengths, improvements, meets, checked, repairCount: n, job, kpis: impacts, suggestions };
 }
 
 /**
@@ -288,4 +303,46 @@ export function photoGrade(review: PhotoReview): { grade: Impact["grade"]; point
   if (!review.photosShowDamage) return null;
   const points = review.findings.reduce((sum, f) => sum + FINDING_POINTS[f.kind][f.severity], 0);
   return { grade: ACCURACY_GRADES.find(([max]) => points <= max)?.[1] ?? "F", points };
+}
+
+/** "Positive", "Negative" or "Mixed", plus the KPIs behind it, for the top of the grade. */
+function summarize(impacts: KpiImpact[], photoReview?: PhotoReview) {
+  const graded = impacts.filter((i): i is KpiImpact & { jobValue: number } => i.jobValue !== null);
+  const better = graded.filter((i) => i.direction === "better").length;
+  const worse = graded.filter((i) => i.direction === "worse").length;
+  const effect: Impact["effect"] = better && worse ? "mixed" : better ? "positive" : worse ? "negative" : "neutral";
+
+  const fmt = (v: number, i: KpiImpact) => formatValue(v, i.unit);
+  const line = (i: KpiImpact & { jobValue: number }) =>
+    `${i.kind === "predicted" ? "Predicted at" : "This claim:"} ${fmt(i.jobValue, i)} vs a ${fmt(i.target, i)} target. ` +
+    `Moves your average from ${fmt(i.before, i)} to ${fmt(i.after, i)}.`;
+  // How far past (or short of) target, relative to the target, so the worst misses come first.
+  const gap = (i: KpiImpact & { jobValue: number }) => Math.abs(i.jobValue - i.target) / (Math.abs(i.target) || 1);
+  const meets = (i: KpiImpact & { jobValue: number }) =>
+    meetsTarget({ value: i.jobValue, target: i.target, higherIsBetter: kpiById(i.id)?.higherIsBetter ?? false });
+
+  const strengths: Point[] = graded
+    .filter(meets)
+    .sort((a, b) => gap(b) - gap(a))
+    .map((i) => ({ title: i.label, detail: line(i) }));
+
+  const misses = graded.filter((i) => !meets(i));
+  // A KPI this claim would tip from meeting its target to missing it matters most.
+  const tipped = (i: KpiImpact) => i.statusBefore === "meets" && i.statusAfter !== "meets";
+  const improvements: Point[] = [
+    ...(photoReview?.findings ?? [])
+      .filter((f) => f.kind === "missing")
+      .map((f) => ({
+        title: `Missing from the estimate: ${f.item}`,
+        detail: `${f.detail}${f.photo !== null ? ` (photo ${f.photo})` : ""} Adding it now avoids a supplement.`,
+      })),
+    ...misses
+      .sort((a, b) => Number(tipped(b)) - Number(tipped(a)) || gap(b) - gap(a))
+      .map((i) => ({
+        title: tipped(i) ? `${i.label}: would drop below target` : i.label,
+        // A miss can still nudge a worse average the right way; say so, so it doesn't read as a contradiction.
+        detail: line(i) + (i.direction === "better" ? " That helps a little, but this claim is still short of the target." : ""),
+      })),
+  ];
+  return { effect, better, worse, strengths, improvements };
 }

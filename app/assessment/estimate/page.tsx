@@ -119,6 +119,50 @@ function PhotoCheck({ review, urls }: { review: PhotoReview; urls: string[] }) {
   );
 }
 
+const EFFECT: Record<Impact["effect"], { label: string; style: string }> = {
+  positive: { label: "Positive effect", style: "border-success/40 bg-success/10 text-success-soft" },
+  negative: { label: "Negative effect", style: "border-danger/40 bg-danger/10 text-danger-soft" },
+  mixed: { label: "Mixed effect", style: "border-warning/40 bg-warning/10 text-warning" },
+  neutral: { label: "No effect", style: "border-line bg-night-2 text-bone/80" },
+};
+
+const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+/** "Positive effect: improves 4 KPIs, hurts 1", then what the claim does well and where it falls short. */
+function EffectSummary({ impact, insurer }: { impact: Impact; insurer: string }) {
+  const effect = EFFECT[impact.effect];
+  const counts = [impact.better && `improves ${plural(impact.better, "KPI")}`, impact.worse && `hurts ${plural(impact.worse, "KPI")}`].filter(Boolean).join(", ");
+  const list = (title: string, points: Impact["strengths"], tone: string, empty: string) => (
+    <div className="rounded-xl border border-line bg-night-2 p-4">
+      <h3 className={`text-sm font-semibold ${tone}`}>{title}</h3>
+      {points.length ? (
+        <ul className="mt-2 space-y-3">
+          {points.map((p) => (
+            <li key={p.title} className="text-sm">
+              <p className="font-medium [overflow-wrap:anywhere] text-bone">{p.title}</p>
+              <p className="mt-0.5 leading-relaxed text-bone/70">{p.detail}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 text-sm text-muted">{empty}</p>
+      )}
+    </div>
+  );
+  return (
+    <div className="space-y-3">
+      <p className={`rounded-xl border px-4 py-3 font-semibold ${effect.style}`}>
+        {effect.label} on your {insurer} scorecard
+        {counts && <span className="font-normal">: {counts}.</span>}
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        {list("Strengths", impact.strengths, "text-success-soft", "None of this claim's numbers beat the targets.")}
+        {list("Areas to improve", impact.improvements, "text-danger-soft", "Nothing: every graded number meets the target.")}
+      </div>
+    </div>
+  );
+}
+
 const GRADE_COLOR: Record<Impact["grade"], string> = {
   A: "text-success-soft",
   B: "text-success-soft",
@@ -459,6 +503,8 @@ export default function EstimateStep() {
                   </p>
                 </div>
               </div>
+
+              <EffectSummary impact={impact} insurer={programName(program!)} />
 
               <div>
                 <h2 className="font-serif text-2xl text-bone">Effect on your {programName(program!)} scorecard</h2>
