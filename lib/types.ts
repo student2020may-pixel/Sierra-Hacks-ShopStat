@@ -60,7 +60,7 @@ export interface ScorecardReadResponse {
 export type Estimate = z.infer<typeof EstimateExtractSchema>;
 export type PhotoFinding = z.infer<typeof EstimatePhotoReviewSchema>["photoFindings"][number];
 
-/** What the damage photos showed against the estimate (step 3 with photos). */
+/** What the damage photos showed against the estimate (grading an estimate with photos). */
 export interface PhotoReview {
   photoCount: number;
   photosShowDamage: boolean;

@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import Progress from "@/components/assessment/Progress";
-import StepNav from "@/components/assessment/StepNav";
 import KpiTable from "@/components/KpiTable";
 import Notice from "@/components/Notice";
 import Spinner from "@/components/Spinner";
@@ -43,7 +41,7 @@ export default function ScorecardStep() {
   // Ignores responses from a request the user has since replaced.
   const requestId = useRef(0);
 
-  // Coming back to this step: show the saved KPIs instead of starting over.
+  // Coming back to this page: show the saved KPIs instead of starting over.
   useEffect(() => {
     const saved = loadCards();
     setCards(saved);
@@ -157,8 +155,7 @@ export default function ScorecardStep() {
   const activeCount = kpis.filter((k) => k.value !== null || k.target !== null).length;
 
   return (
-    <main className="px-safe mx-auto max-w-5xl pt-8">
-      <Progress step={1} />
+    <main className="px-safe mx-auto max-w-5xl pt-8 pb-24">
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Your DRP KPIs</h1>
       <p className="mt-2 text-bone/70">
         Pick an insurer, then upload screenshots from its CCC dashboard: the main view and the hover boxes that show each KPI&apos;s
@@ -332,14 +329,6 @@ export default function ScorecardStep() {
         )}
       </section>
 
-      <StepNav
-        next={{
-          href: "/assessment/jobs",
-          label: "Next",
-          ready: Object.keys(cards).length > 0 && !loading,
-          hint: "Add one insurer's numbers or try the sample to continue.",
-        }}
-      />
     </main>
   );
 }

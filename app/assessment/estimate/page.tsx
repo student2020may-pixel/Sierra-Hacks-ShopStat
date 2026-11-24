@@ -2,15 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import Progress from "@/components/assessment/Progress";
-import StepNav from "@/components/assessment/StepNav";
 import Notice from "@/components/Notice";
 import Spinner from "@/components/Spinner";
 import sampleEstimate from "@/data/sample-estimate.json";
 import type { AnomalyResult } from "@/lib/anomaly";
 import { formatValue } from "@/lib/format";
 import { shrinkImage } from "@/lib/image";
-import { DEFAULT_REPAIR_COUNT, estimateImpact, photoGrade, type Impact, type KpiImpact } from "@/lib/impact";
+import { DEFAULT_REPAIR_COUNT, estimateImpact, photoGrade, predictJob, type Impact, type KpiImpact } from "@/lib/impact";
 import { STATUS_STYLES } from "@/lib/status";
 import { loadCards, programFor, programName, PROGRAMS, slotKpis, type ProgramId, type SavedCard } from "@/lib/drp";
 import { isJobsResult, JOBS_KEY, loadValid } from "@/lib/storage";
@@ -187,7 +185,7 @@ function ImpactRow({ m }: { m: KpiImpact }) {
 }
 
 export default function EstimateStep() {
-  /** Scorecards by DRP from step 1; undefined until read from storage. */
+  /** Scorecards by DRP from the DRP KPIs page; undefined until read from storage. */
   const [cards, setCards] = useState<Partial<Record<ProgramId, SavedCard>> | undefined>(undefined);
   /** The DRP picked by hand; otherwise the estimate's insurer decides. */
   const [chosen, setChosen] = useState<ProgramId | null>(null);
@@ -289,19 +287,21 @@ export default function EstimateStep() {
   if (cards === undefined) return <main className="px-safe mx-auto max-w-5xl pt-8" />;
 
   const available = PROGRAMS.filter((p) => cards[p.id]).map((p) => p.id);
-  // Grade against the DRP the estimate is written for, when step 1 has that scorecard.
+  // Grade against the DRP the estimate is written for, when its KPIs have been entered.
   const estimateProgram = programFor(estimate?.data.insurer);
   const program = (chosen && cards[chosen] ? chosen : null) ?? (estimateProgram && cards[estimateProgram] ? estimateProgram : null) ?? available[0] ?? null;
   const score = program ? cards[program]!.card : null;
   const repairCount = score?.claims ?? DEFAULT_REPAIR_COUNT;
   const impact = score && estimate ? estimateImpact(slotKpis(score), estimate.data, history, repairCount, estimate.photoReview) : null;
   const e = estimate?.data;
+  // Without any KPIs there's no grade, but the estimate is still read and checked against the photos.
+  const missed = estimate?.photoReview?.findings.filter((f) => f.kind === "missing").length ?? 0;
+  const job = impact?.job ?? (e ? predictJob(e, history, missed) : null);
   const oem = e?.parts.filter((p) => p.type === "oem").length ?? 0;
   const alt = e?.parts.filter((p) => p.type !== "oem" && p.type !== "unknown").length ?? 0;
 
   return (
-    <main className="px-safe mx-auto max-w-5xl pt-8">
-      <Progress step={3} />
+    <main className="px-safe mx-auto max-w-5xl pt-8 pb-24">
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Grade an estimate</h1>
       <p className="mt-2 text-bone/70">Upload any repair estimate to see how it would move your scorecard.</p>
       <p className="mt-1 text-sm text-muted">
@@ -309,115 +309,121 @@ export default function EstimateStep() {
         the repair lines. Customer details are ignored, and the estimate isn&apos;t saved anywhere.
       </p>
 
-      {!score ? (
-        <div className="mt-6">
-          <Notice kind="info">
-            Upload at least one DRP scorecard first, so there&apos;s something to grade against.{" "}
-            <Link href="/assessment/scorecard" className="font-semibold text-gold underline">
-              Go to step 1
-            </Link>
-          </Notice>
-        </div>
-      ) : (
-        <>
-          {!history && (
-            <p className="mt-3 text-sm text-muted">
-              Days in the shop are estimated from general rules.{" "}
-              <Link href="/assessment/jobs" className="text-gold underline">
-                Add your last cars
-              </Link>{" "}
-              to base them on your shop.
-            </p>
-          )}
+      {!history && (
+        <p className="mt-3 text-sm text-muted">
+          Days in the shop are estimated from general rules.{" "}
+          <Link href="/assessment/jobs" className="text-gold underline">
+            Add your last cars
+          </Link>{" "}
+          to base them on your shop.
+        </p>
+      )}
 
+      <label
+        onDragOver={(ev) => ev.preventDefault()}
+        onDrop={(ev) => {
+          ev.preventDefault();
+          pick(ev.dataTransfer.files[0]);
+        }}
+        className="pressable mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/20 bg-night-2 px-4 py-10 text-center hover:border-gold/60"
+      >
+        <input
+          type="file"
+          className="sr-only"
+          onChange={(ev) => {
+            pick(ev.target.files?.[0]);
+            ev.target.value = "";
+          }}
+        />
+        <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{file ? file.name : "Tap to choose an estimate, or drag it here"}</p>
+        <p className="mt-1 text-sm text-muted">{file ? "Tap to choose another" : "CCC, Mitchell or Audatex PDF, a photo or a screenshot · up to 4.5 MB"}</p>
+      </label>
+
+      <div className="mt-4 rounded-xl border border-line bg-night-2 p-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <p className="font-medium text-bone">Damage photos (optional)</p>
+            <p className="text-sm text-muted">Add up to {MAX_PHOTOS} photos of the damage to check the estimate against them.</p>
+          </div>
           <label
-            onDragOver={(ev) => ev.preventDefault()}
-            onDrop={(ev) => {
-              ev.preventDefault();
-              pick(ev.dataTransfer.files[0]);
-            }}
-            className="pressable mt-6 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-white/20 bg-night-2 px-4 py-10 text-center hover:border-gold/60"
+            className={`pressable cursor-pointer rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-bone/85 hover:bg-white/[0.03] ${photos.length >= MAX_PHOTOS ? "pointer-events-none opacity-50" : ""}`}
           >
+            Add photos
             <input
               type="file"
+              accept="image/*,.heic,.heif"
+              multiple
+              disabled={photos.length >= MAX_PHOTOS}
               className="sr-only"
               onChange={(ev) => {
-                pick(ev.target.files?.[0]);
+                addPhotos(ev.target.files);
                 ev.target.value = "";
               }}
             />
-            <p className="max-w-full font-medium [overflow-wrap:anywhere] text-bone">{file ? file.name : "Tap to choose an estimate, or drag it here"}</p>
-            <p className="mt-1 text-sm text-muted">{file ? "Tap to choose another" : "CCC, Mitchell or Audatex PDF, a photo or a screenshot · up to 4.5 MB"}</p>
           </label>
-
-          <div className="mt-4 rounded-xl border border-line bg-night-2 p-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <p className="font-medium text-bone">Damage photos (optional)</p>
-                <p className="text-sm text-muted">Add up to {MAX_PHOTOS} photos of the damage to check the estimate against them.</p>
-              </div>
-              <label
-                className={`pressable cursor-pointer rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-bone/85 hover:bg-white/[0.03] ${photos.length >= MAX_PHOTOS ? "pointer-events-none opacity-50" : ""}`}
-              >
-                Add photos
-                <input
-                  type="file"
-                  accept="image/*,.heic,.heif"
-                  multiple
-                  disabled={photos.length >= MAX_PHOTOS}
-                  className="sr-only"
-                  onChange={(ev) => {
-                    addPhotos(ev.target.files);
-                    ev.target.value = "";
-                  }}
-                />
-              </label>
-            </div>
-            {photos.length > 0 && (
-              <div className="mt-3">
-                <PhotoStrip urls={photoUrls} onRemove={removePhoto} />
-              </div>
-            )}
+        </div>
+        {photos.length > 0 && (
+          <div className="mt-3">
+            <PhotoStrip urls={photoUrls} onRemove={removePhoto} />
           </div>
+        )}
+      </div>
 
-          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
-            <button
-              onClick={submit}
-              disabled={!file || loading}
-              className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted"
-            >
-              {photos.length ? "Grade this estimate with photos" : "Grade this estimate"}
-            </button>
-            <button
-              type="button"
-              onClick={() => loadSample()}
-              disabled={loading}
-              className="pressable rounded-full border border-white/20 px-5 py-3 font-semibold text-bone/85 hover:bg-white/[0.03] disabled:opacity-50"
-            >
-              Try with sample estimate
-            </button>
-            {loading && <Spinner label="Reading the estimate… about 10–30 seconds." />}
-          </div>
+      <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-3">
+        <button
+          onClick={submit}
+          disabled={!file || loading}
+          className="pressable rounded-full bg-gold px-5 py-3 font-semibold text-night hover:bg-bone disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-muted"
+        >
+          {photos.length ? "Grade this estimate with photos" : "Grade this estimate"}
+        </button>
+        <button
+          type="button"
+          onClick={() => loadSample()}
+          disabled={loading}
+          className="pressable rounded-full border border-white/20 px-5 py-3 font-semibold text-bone/85 hover:bg-white/[0.03] disabled:opacity-50"
+        >
+          Try with sample estimate
+        </button>
+        {loading && <Spinner label="Reading the estimate… about 10–30 seconds." />}
+      </div>
 
-          {error && (
-            <div className="mt-6">
-              <Notice kind="error">{error}</Notice>
-            </div>
+      {error && (
+        <div className="mt-6">
+          <Notice kind="error">{error}</Notice>
+        </div>
+      )}
+
+      {e && estimate && job && (
+        <section className="mt-10 space-y-6">
+          {estimate.notice && <Notice kind="info">{estimate.notice}</Notice>}
+          {!impact && (
+            <>
+              <p className="font-medium [overflow-wrap:anywhere] text-bone">
+                {e.vehicle ?? estimate.name}
+                {e.insurer && <span className="text-bone/70"> · {e.insurer}</span>}
+                {e.total !== null && <span className="text-bone/70"> · {formatValue(e.total, "$")}</span>}
+              </p>
+              <Notice kind="info">
+                To see the KPI grade and the effect on your averages, enter {estimateProgram ? `${programName(estimateProgram)}'s` : "the insurer's"} KPIs.{" "}
+                <Link href="/assessment/scorecard" className="font-semibold text-gold underline">
+                  Go to DRP KPIs
+                </Link>
+              </Notice>
+            </>
+          )}
+          {impact && e.insurer && estimateProgram !== program && (
+            <Notice kind="info">
+              This estimate is for {e.insurer}, but {estimateProgram ? `${programName(estimateProgram)} has` : "that insurer has"} no KPIs entered yet, so
+              it&apos;s graded against {programName(program!)}.{" "}
+              <Link href="/assessment/scorecard" className="font-semibold text-gold underline">
+                Add the scorecard
+              </Link>
+            </Notice>
           )}
 
-          {impact && e && estimate && (
-            <section className="mt-10 space-y-6">
-              {estimate.notice && <Notice kind="info">{estimate.notice}</Notice>}
-              {e.insurer && estimateProgram !== program && (
-                <Notice kind="info">
-                  This estimate is for {e.insurer}, but step 1 doesn&apos;t have {estimateProgram ? `a ${programName(estimateProgram)}` : "that insurer's"} scorecard, so
-                  it&apos;s graded against {programName(program!)}.{" "}
-                  <Link href="/assessment/scorecard" className="font-semibold text-gold underline">
-                    Add the scorecard
-                  </Link>
-                </Notice>
-              )}
-
+          {impact && score && (
+            <>
               <label className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-bone/80">
                 Graded against your
                 <select
@@ -458,7 +464,7 @@ export default function EstimateStep() {
                 <h2 className="font-serif text-2xl text-bone">Effect on your {programName(program!)} scorecard</h2>
                 <p className="mt-1 text-sm text-muted">
                   Your averages now, and with this claim added, across {repairCount.toLocaleString("en-US")} claims
-                  {score.claims ? "" : " (a typical count; enter yours in step 1)"}. Only KPIs with a value and target in step 1 are shown.
+                  {score.claims ? "" : " (a typical count; enter yours on the DRP KPIs page)"}. Only KPIs with a value and target are shown.
                 </p>
                 <div className="mt-3 overflow-hidden rounded-xl border border-line bg-night-2">
                   <table className="w-full text-sm">
@@ -478,55 +484,54 @@ export default function EstimateStep() {
                   </table>
                 </div>
               </div>
-
-              <div>
-                <h2 className="font-serif text-2xl text-bone">What we read</h2>
-                <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
-                  {[
-                    ["Labor hours", impact.job.laborHours === null ? "Not shown" : `${impact.job.laborHours.toFixed(1)} hrs`],
-                    ["Parts", `${e.parts.length} (${oem} OEM, ${alt} alternate)`],
-                    ["Sublets", e.sublets.length ? e.sublets.map((s) => s.description).join(", ") : "None"],
-                    [
-                      "Days in the shop",
-                      impact.job.days === null ? "Can't tell" : `About ${impact.job.days} (${impact.job.daysFromHistory ? "from your last cars" : "general estimate"})`,
-                    ],
-                    ["Chance of a supplement", pct(impact.job.supplementChance)],
-                    ["Chance of a late delivery", pct(impact.job.lateChance)],
-                  ].map(([k, v]) => (
-                    <div key={k} className="flex justify-between gap-4 border-b border-line py-2">
-                      <dt className="text-muted">{k}</dt>
-                      <dd className="text-right [overflow-wrap:anywhere] text-bone">{v}</dd>
-                    </div>
-                  ))}
-                </dl>
-                {e.hiddenDamageSigns.length > 0 && <p className="mt-3 text-sm text-bone/70">Possible hidden damage: {e.hiddenDamageSigns.join("; ")}.</p>}
-              </div>
-
-              {estimate.photoReview && <PhotoCheck review={estimate.photoReview} urls={estimate.photoUrls} />}
-
-              {impact.suggestions.length > 0 && (
-                <div>
-                  <h2 className="font-serif text-2xl text-bone">Ways to protect your score</h2>
-                  <ul className="mt-3 space-y-3">
-                    {impact.suggestions.map((s) => (
-                      <li key={s.title} className="rounded-xl border border-line bg-night-2 p-4 text-sm">
-                        <p className="font-semibold text-bone">{s.title}</p>
-                        <p className="mt-1 leading-relaxed text-bone/75">{s.detail}</p>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-              <p className="text-xs text-muted">
-                Days, supplement and late-delivery chances are predictions, not guarantees. Repair cost and parts mix come straight
-                from the estimate.
-              </p>
-            </section>
+            </>
           )}
-        </>
+
+          <div>
+            <h2 className="font-serif text-2xl text-bone">What we read</h2>
+            <dl className="mt-3 grid gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+              {[
+                ["Labor hours", job.laborHours === null ? "Not shown" : `${job.laborHours.toFixed(1)} hrs`],
+                ["Parts", `${e.parts.length} (${oem} OEM, ${alt} alternate)`],
+                ["Sublets", e.sublets.length ? e.sublets.map((s) => s.description).join(", ") : "None"],
+                [
+                  "Days in the shop",
+                  job.days === null ? "Can't tell" : `About ${job.days} (${job.daysFromHistory ? "from your last cars" : "general estimate"})`,
+                ],
+                ["Chance of a supplement", pct(job.supplementChance)],
+                ["Chance of a late delivery", pct(job.lateChance)],
+              ].map(([k, v]) => (
+                <div key={k} className="flex justify-between gap-4 border-b border-line py-2">
+                  <dt className="text-muted">{k}</dt>
+                  <dd className="text-right [overflow-wrap:anywhere] text-bone">{v}</dd>
+                </div>
+              ))}
+            </dl>
+            {e.hiddenDamageSigns.length > 0 && <p className="mt-3 text-sm text-bone/70">Possible hidden damage: {e.hiddenDamageSigns.join("; ")}.</p>}
+          </div>
+
+          {estimate.photoReview && <PhotoCheck review={estimate.photoReview} urls={estimate.photoUrls} />}
+
+          {impact && impact.suggestions.length > 0 && (
+            <div>
+              <h2 className="font-serif text-2xl text-bone">Ways to protect your score</h2>
+              <ul className="mt-3 space-y-3">
+                {impact.suggestions.map((s) => (
+                  <li key={s.title} className="rounded-xl border border-line bg-night-2 p-4 text-sm">
+                    <p className="font-semibold text-bone">{s.title}</p>
+                    <p className="mt-1 leading-relaxed text-bone/75">{s.detail}</p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="text-xs text-muted">
+            Days, supplement and late-delivery chances are predictions, not guarantees. Dollars and hours come straight from the
+            estimate.
+          </p>
+        </section>
       )}
 
-      <StepNav back="/assessment/jobs" />
     </main>
   );
 }

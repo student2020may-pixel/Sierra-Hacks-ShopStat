@@ -25,13 +25,15 @@ The whole app is private for now. `middleware.ts` sends anyone without the admin
 where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly cookie. API routes return
 401 without it.
 
-## Pipeline
+## Pages
+
+Three tools, used in any order. Each works on its own; grading uses the KPIs and last cars when they're there.
 
 | Page | What it does |
 | --- | --- |
-| `/assessment/scorecard` | **Step 1.** Pick an insurer (CSAA, GEICO, Travelers, Farmers; `lib/drp.ts`) and upload screenshots of its CCC dashboard: the main view and the KPI hover boxes. The AI reads only the insurer whose details are shown (not the summary rows for the others) and the numbers are merged into that slot, so nothing else is overwritten. Numbers can also be typed in. KPIs left blank are inactive for that insurer. |
-| `/assessment/jobs` | **Step 2.** Upload your last cars: CSV or Excel (read in the browser), or a PDF, photo or screenshot (read by the AI). Flags jobs that took far longer than their labor hours predict. |
-| `/assessment/estimate` | **Step 3.** Upload any estimate. The AI reads the repair lines and the insurer; it's graded against that DRP's scorecard (or one you pick). The grade and impact are computed in code. |
+| `/assessment/scorecard` | **DRP KPIs.** Pick an insurer (CSAA, GEICO, Travelers, Farmers; `lib/drp.ts`) and upload screenshots of its CCC dashboard: the main view and the KPI hover boxes. The AI reads only the insurer whose details are shown (not the summary rows for the others) and the numbers are merged into that slot, so nothing else is overwritten. Numbers can also be typed in. KPIs left blank are inactive for that insurer. |
+| `/assessment/jobs` | **Last cars (optional).** Upload your last cars: CSV or Excel (read in the browser), or a PDF, photo or screenshot (read by the AI). Flags jobs that took far longer than their labor hours predict. |
+| `/assessment/estimate` | **Grade an estimate.** Upload any estimate. The AI reads the repair lines and the insurer; it's graded against that DRP's KPIs (or one you pick), once they're entered; without them it still reads the estimate and runs the photo check. The grade and impact are computed in code. |
 | `/mock-scorecard` | A fictional insurer scorecard for testing. |
 
 ## How an estimate is graded
@@ -47,7 +49,7 @@ where the access code (in `lib/admin.ts`, server only) sets a 7-day httpOnly coo
   The repair-size cycle time KPIs only count an estimate whose total falls in their band.
 - **This claim's numbers:** labor, parts, paint materials and misc dollars, paint and repair hours, and
   overrides come straight from the estimate.
-  Days in the shop come from the line fitted to your last cars in step 2 (or a general rule without
+  Days in the shop come from the line fitted to your last cars (or a general rule without
   them), plus half a day per sublet. The chance of a supplement starts from your own past share of
   supplemented jobs and rises for preliminary estimates, signs of hidden damage and frame work.
 - **Effect on the KPIs:** each KPI is an average over the insurer's claims, so with `n` claims this

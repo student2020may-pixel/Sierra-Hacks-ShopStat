@@ -3,8 +3,6 @@
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import ManualJobs from "@/components/assessment/ManualJobs";
-import Progress from "@/components/assessment/Progress";
-import StepNav from "@/components/assessment/StepNav";
 import Notice from "@/components/Notice";
 import Skeleton from "@/components/Skeleton";
 import Spinner from "@/components/Spinner";
@@ -55,20 +53,16 @@ export default function JobsStep() {
   const [source, setSource] = useState<string | null>(null);
   const [skipped, setSkipped] = useState(0);
   const [manual, setManual] = useState(false);
-  /** Sample jobs from an earlier visit: counts as done, but isn't shown until loaded again. */
-  const [savedSample, setSavedSample] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [reading, setReading] = useState(false);
 
-  // Coming back to this step: restore the last result instead of starting over.
+  // Coming back to this page: restore the last result instead of starting over. Sample jobs from an
+  // earlier visit stay in the tab for grading, but aren't shown until loaded again.
   useEffect(() => {
     const saved = loadValid(JOBS_KEY, isJobsResult) as AnomalyResult | null;
     if (!saved) return;
     const label = load<string>(JOBS_SOURCE_KEY) ?? "your last upload";
-    if (label === SAMPLE_LABEL) {
-      setSavedSample(true);
-      return;
-    }
+    if (label === SAMPLE_LABEL) return;
     setResult(saved);
     setSource(label);
   }, []);
@@ -165,8 +159,7 @@ export default function JobsStep() {
   }
 
   return (
-    <main className="px-safe mx-auto max-w-5xl pt-8">
-      <Progress step={2} />
+    <main className="px-safe mx-auto max-w-5xl pt-8 pb-24">
       <h1 className="mt-6 font-serif text-4xl font-normal tracking-tight text-bone sm:text-5xl">Find the jobs that dragged on</h1>
       <p className="mt-2 text-bone/70">
         Upload your recent repair jobs. We compare each job&apos;s days in the shop to what its labor hours
@@ -312,10 +305,6 @@ export default function JobsStep() {
         </section>
       )}
 
-      <StepNav
-        back="/assessment/scorecard"
-        next={{ href: "/assessment/estimate", label: "Next", ready: (result !== null || savedSample) && !loading && !reading, hint: "Add your jobs or use the sample to continue." }}
-      />
     </main>
   );
 }
