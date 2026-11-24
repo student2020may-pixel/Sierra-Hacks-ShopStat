@@ -9,7 +9,7 @@ import { isScored, type Estimate, type Kpi, type KpiUnit, type PhotoReview, type
  * the insurer's claims, so adding this claim moves it to (value × n + this claim) / (n + 1).
  *
  * "estimate" KPIs come straight from the estimate's numbers (labor $, parts %, paint hours...). Days in
- * the shop and supplements are predictions: from the shop's own past jobs when step 2 has them,
+ * the shop and supplements are predictions: from the shop's own past jobs on the Last cars page,
  * otherwise from simple rules. "reference" KPIs (surveys, audits, timing) aren't moved by one estimate.
  */
 
@@ -24,7 +24,7 @@ const MAX_SUBLET_DAYS = 2;
 export interface JobPrediction {
   laborHours: number | null;
   days: number | null;
-  /** True when the days come from the shop's own past jobs (step 2). */
+  /** True when the days come from the shop's own past jobs (the Last cars page). */
   daysFromHistory: boolean;
   /** Chance this job needs a supplement, 0–1. */
   supplementChance: number;
@@ -76,7 +76,7 @@ function laborHours(e: Estimate): number | null {
 }
 
 function supplementChance(e: Estimate, history: AnomalyResult | null, missedItems: number): number {
-  // The shop's own share of jobs that needed a supplement, when step 2 has it.
+  // The shop's own share of jobs that needed a supplement, from the Last cars page.
   const withSupplements = history?.jobs.filter((j) => j.supplements > 0).length ?? 0;
   let chance = history && history.jobs.length >= 10 ? withSupplements / history.jobs.length : 0.25;
   if (e.preliminary) chance += 0.3;

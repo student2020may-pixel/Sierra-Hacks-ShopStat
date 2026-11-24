@@ -4,9 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const LINKS = [
-  { href: "/assessment/scorecard", label: "Scorecard" },
-  { href: "/assessment/jobs", label: "Jobs" },
-  { href: "/assessment/estimate", label: "Estimate" },
+  { href: "/assessment/estimate", label: "Grade estimate" },
+  { href: "/assessment/scorecard", label: "DRP KPIs" },
+  { href: "/assessment/jobs", label: "Last cars" },
 ];
 
 // Pages that should render without app chrome (e.g. for screenshots).
