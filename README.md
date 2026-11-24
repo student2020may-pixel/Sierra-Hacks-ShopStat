@@ -54,6 +54,10 @@ Three tools, used in any order. Each works on its own; grading uses the KPIs and
   supplemented jobs and rises for preliminary estimates, signs of hidden damage and frame work.
 - **Effect on the KPIs:** each KPI is an average over the insurer's claims, so with `n` claims this
   claim moves it to `(value × n + this claim) / (n + 1)`.
+- **Overall effect:** positive, negative or mixed, from how many graded KPIs this claim moves the right
+  or wrong way. **Strengths** are the KPIs where the claim beats the target; **areas to improve** are
+  the ones it misses (a KPI it would tip below target comes first), plus damage the photos show is
+  missing from the estimate.
 - **Grade:** how many of this job's own numbers meet the insurer's targets: all of them is an A, 75%+
   a B, 50%+ a C, 25%+ a D, below that an F.
 - **Photo check (optional):** add up to 8 damage photos and they go to the AI with the estimate in
